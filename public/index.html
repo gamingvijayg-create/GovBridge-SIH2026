@@ -729,11 +729,24 @@
     function AdminDashboardPage({ user }) {
       const [applications, setApplications] = useState([]);
       const [shortlisted, setShortlisted] = useState([]);
+      const [problemStatements, setProblemStatements] = useState([]);
       const [stats, setStats] = useState({});
       const [sectorFilter, setSectorFilter] = useState('All');
       const [dpiitFilter, setDpiitFilter] = useState('false');
       const [selectedCandidate, setSelectedCandidate] = useState(null);
       const [adminNotes, setAdminNotes] = useState('');
+      
+      // New Problem Statement Form State
+      const [showAddPsModal, setShowAddPsModal] = useState(false);
+      const [psTitle, setPsTitle] = useState('');
+      const [psDept, setPsDept] = useState('');
+      const [psCat, setPsCat] = useState('AgriTech');
+      const [psDesc, setPsDesc] = useState('');
+      const [psSkills, setPsSkills] = useState('');
+      const [psMinExp, setPsMinExp] = useState(3);
+      const [psDpiit, setPsDpiit] = useState('true');
+      const [psTurnover, setPsTurnover] = useState('40 Lakhs');
+      const [psDeadline, setPsDeadline] = useState('Q4 2026');
 
       const fetchAdminData = () => {
         fetch(`/api/admin/applications?sector=${sectorFilter}&dpiitOnly=${dpiitFilter}`, {
@@ -752,6 +765,10 @@
         })
         .then(r=>r.json())
         .then(d=>{ if(d.success) setShortlisted(d.data); });
+
+        fetch('/api/problem-statements')
+        .then(r=>r.json())
+        .then(d=>{ if(d.success) setProblemStatements(d.data); });
       };
 
       useEffect(() => {
@@ -777,16 +794,69 @@
         } catch(e) { alert(e.message); }
       };
 
+      const handleAddProblemStatement = async (e) => {
+        e.preventDefault();
+        try {
+          const res = await fetch('/api/problem-statements', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${getToken()}`
+            },
+            body: JSON.stringify({
+              title: psTitle,
+              department: psDept,
+              category: psCat,
+              description: psDesc,
+              requiredSkills: psSkills,
+              minimumExperience: Number(psMinExp),
+              dpiitRequired: psDpiit === 'true',
+              minimumTurnover: psTurnover,
+              deadline: psDeadline
+            })
+          });
+          const json = await res.json();
+          if(json.success) {
+            alert('✅ New Problem Statement Added Successfully!');
+            setShowAddPsModal(false);
+            setPsTitle(''); setPsDept(''); setPsDesc(''); setPsSkills('');
+            fetchAdminData();
+          } else {
+            alert('Error: ' + (json.error || 'Failed to add problem statement'));
+          }
+        } catch(e) { alert(e.message); }
+      };
+
+      const handleDeletePs = async (psId) => {
+        if(!confirm('Are you sure you want to delete this Problem Statement?')) return;
+        try {
+          const res = await fetch(`/api/problem-statements/${psId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${getToken()}` }
+          });
+          const json = await res.json();
+          if(json.success) {
+            alert('Problem Statement Deleted');
+            fetchAdminData();
+          }
+        } catch(e) { alert(e.message); }
+      };
+
       return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
               <h2 className="text-3xl font-extrabold text-slate-900">👑 Admin Procurement Dashboard</h2>
               <p className="text-xs text-slate-500 mt-1">Review eligible candidates, save shortlisted startups, and manage problem statements.</p>
             </div>
-            <span className="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full border border-amber-200">
-              Admin Logged In
-            </span>
+            <div className="flex items-center gap-3">
+              <button onClick={()=>setShowAddPsModal(true)} className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition">
+                ➕ Add New Problem Statement
+              </button>
+              <span className="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-2 rounded-xl border border-amber-200">
+                Admin Logged In
+              </span>
+            </div>
           </div>
 
           {/* Overview Stat Cards */}
@@ -804,15 +874,59 @@
               <div className="text-3xl font-extrabold text-amber-600 mt-1">{stats.shortlistedCount || 0}</div>
             </div>
             <div className="bg-white border border-slate-200 p-5 rounded-2xl">
-              <div className="text-xs font-bold text-rose-600 uppercase">Rejected / Ineligible</div>
-              <div className="text-3xl font-extrabold text-rose-600 mt-1">{stats.rejectedCount || 0}</div>
+              <div className="text-xs font-bold text-blue-600 uppercase">Active Problem Statements</div>
+              <div className="text-3xl font-extrabold text-blue-600 mt-1">{problemStatements.length}</div>
+            </div>
+          </div>
+
+          {/* Active Problem Statements Management Table */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">📋 Manage Government Problem Statements ({problemStatements.length})</h3>
+                <p className="text-[11px] text-slate-500">Live problem statements open for startup matching</p>
+              </div>
+              <button onClick={()=>setShowAddPsModal(true)} className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold">
+                + Create PS
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-700">
+                    <th className="p-3">Title</th>
+                    <th className="p-3">Department</th>
+                    <th className="p-3">Category</th>
+                    <th className="p-3">Min Exp</th>
+                    <th className="p-3">DPIIT</th>
+                    <th className="p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {problemStatements.map(ps => (
+                    <tr key={ps._id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="p-3 font-bold text-slate-900">{ps.title}</td>
+                      <td className="p-3 text-slate-600">{ps.department}</td>
+                      <td className="p-3"><span className="px-2 py-0.5 bg-slate-100 text-slate-800 rounded font-semibold text-[10px]">{ps.category}</span></td>
+                      <td className="p-3 text-slate-600">{ps.minimumExperience} Yrs</td>
+                      <td className="p-3">{ps.dpiitRequired ? 'Required' : 'Optional'}</td>
+                      <td className="p-3">
+                        <button onClick={()=>handleDeletePs(ps._id)} className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded font-bold">
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
           {/* Candidate Filters */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-slate-900 text-sm">Candidate Candidate Filters</h3>
+              <h3 className="font-bold text-slate-900 text-sm">Startup Applications Evaluation</h3>
               <div className="flex gap-3">
                 <select className="p-2 border border-slate-200 rounded-lg text-xs" value={sectorFilter} onChange={e=>setSectorFilter(e.target.value)}>
                   <option value="All">All Sectors</option>
@@ -866,6 +980,87 @@
               </table>
             </div>
           </div>
+
+          {/* Add Problem Statement Modal */}
+          {showAddPsModal && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-8 max-w-2xl w-full space-y-6 relative max-h-[90vh] overflow-y-auto">
+                <button onClick={()=>setShowAddPsModal(false)} className="absolute top-6 right-6 font-bold text-slate-400 hover:text-slate-600">✕</button>
+                <div className="space-y-1">
+                  <h3 className="text-xl font-bold text-slate-900">➕ Add Government Problem Statement</h3>
+                  <p className="text-xs text-slate-500">Create a new problem statement to match with startup capabilities using AI Atlas Vector Search.</p>
+                </div>
+
+                <form onSubmit={handleAddProblemStatement} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="font-semibold text-slate-700">Title</label>
+                      <input type="text" required className="w-full mt-1 p-3 border border-slate-200 rounded-xl" value={psTitle} onChange={e=>setPsTitle(e.target.value)} placeholder="e.g. AI Smart Water Grid Analytics" />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700">Department</label>
+                      <input type="text" required className="w-full mt-1 p-3 border border-slate-200 rounded-xl" value={psDept} onChange={e=>setPsDept(e.target.value)} placeholder="e.g. Ministry of Jal Shakti" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="font-semibold text-slate-700">Category</label>
+                      <select className="w-full mt-1 p-3 border border-slate-200 rounded-xl" value={psCat} onChange={e=>setPsCat(e.target.value)}>
+                        <option value="AgriTech">AgriTech</option>
+                        <option value="HealthTech">HealthTech</option>
+                        <option value="CleanTech">CleanTech</option>
+                        <option value="FinTech">FinTech</option>
+                        <option value="SmartCity">SmartCity</option>
+                        <option value="E-Gov">E-Gov</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700">Min Experience (Yrs)</label>
+                      <input type="number" required min="0" className="w-full mt-1 p-3 border border-slate-200 rounded-xl" value={psMinExp} onChange={e=>setPsMinExp(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700">DPIIT Mandatory?</label>
+                      <select className="w-full mt-1 p-3 border border-slate-200 rounded-xl" value={psDpiit} onChange={e=>setPsDpiit(e.target.value)}>
+                        <option value="true">Mandatory</option>
+                        <option value="false">Optional</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="font-semibold text-slate-700">Minimum Turnover Requirement</label>
+                      <input type="text" className="w-full mt-1 p-3 border border-slate-200 rounded-xl" value={psTurnover} onChange={e=>setPsTurnover(e.target.value)} placeholder="e.g. 50 Lakhs" />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700">Submission Deadline</label>
+                      <input type="text" className="w-full mt-1 p-3 border border-slate-200 rounded-xl" value={psDeadline} onChange={e=>setPsDeadline(e.target.value)} placeholder="e.g. Q4 2026" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700">Description / Procurement Scope</label>
+                    <textarea required rows="3" className="w-full mt-1 p-3 border border-slate-200 rounded-xl" value={psDesc} onChange={e=>setPsDesc(e.target.value)} placeholder="Detail the challenge requirements and expected startup solutions..."></textarea>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700">Required Skills / Keywords (comma separated)</label>
+                    <input type="text" className="w-full mt-1 p-3 border border-slate-200 rounded-xl" value={psSkills} onChange={e=>setPsSkills(e.target.value)} placeholder="e.g. IoT, Machine Learning, Sensors, GIS Mapping" />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onClick={()=>setShowAddPsModal(false)} className="px-5 py-3 border border-slate-200 text-slate-700 font-bold rounded-xl">
+                      Cancel
+                    </button>
+                    <button type="submit" className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md">
+                      💾 Create Problem Statement
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* Shortlisting Modal */}
           {selectedCandidate && (
