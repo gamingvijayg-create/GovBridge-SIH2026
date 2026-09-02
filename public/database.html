@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GovBridge — Department Live Database Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#16233F;
+    --navy-soft:#2A3B5E;
+    --paper:#F6F3EC;
+    --paper-raised:#FBF9F4;
+    --gold:#B98A2E;
+    --rust:#B8512E;
+    --ink:#24262B;
+    --ink-soft:#5B5A54;
+    --line:#D8D2C4;
+    --green:#3F6B4A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',sans-serif;
+    line-height:1.5;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .serif{font-family:'Source Serif 4',serif;}
+
+  /* Masthead */
+  .masthead{
+    background:var(--navy);
+    color:var(--paper);
+    padding:30px 8vw 22px;
+    border-bottom:6px solid var(--gold);
+  }
+  .masthead-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:14px;}
+  .mark{
+    width:44px;height:44px;
+    border:2px solid var(--gold);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Source Serif 4',serif;
+    font-weight:700;
+    font-size:18px;
+    color:var(--gold);
+    flex-shrink:0;
+  }
+  .brand h1{
+    font-family:'Source Serif 4',serif;
+    font-weight:700;
+    font-size:clamp(24px,3.5vw,36px);
+    margin:0;
+    letter-spacing:0.3px;
+  }
+  .brand p{
+    margin:2px 0 0;
+    font-size:13.5px;
+    color:#C8CEDC;
+  }
+
+  .nav-back-btn {
+    background: var(--gold);
+    color: #000;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  .nav-back-btn:hover { background: #d4a342; }
+
+  .rule-double{
+    border:none;
+    border-top:1px solid var(--gold);
+    border-bottom:1px solid var(--gold);
+    height:3px;
+    margin-top:16px;
+  }
+
+  /* Live Stats Banner */
+  .stats-banner {
+    max-width: 1000px;
+    margin: 24px auto 0;
+    padding: 0 8vw;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .stat-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-card label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .stat-card .val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    margin-top: 4px;
+    color: var(--navy);
+  }
+
+  /* Main Container */
+  .container {
+    max-width: 1000px;
+    margin: 30px auto 80px;
+    padding: 0 8vw;
+  }
+
+  .db-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  .db-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--navy);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+
+  .db-header h2 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 22px;
+    margin: 0;
+    color: var(--navy);
+  }
+
+  .refresh-btn {
+    background: var(--navy);
+    color: var(--paper);
+    border: none;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .refresh-btn:hover { background: var(--navy-soft); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    background: var(--paper);
+    color: var(--navy);
+    font-weight: 600;
+  }
+  tr:hover { background: rgba(185, 138, 46, 0.06); }
+
+  .badge-shortlisted {
+    background: #EAF3EC;
+    color: var(--green);
+    border: 1px solid #BFD4C4;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+  }
+
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    padding:0 8vw 40px;
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-top">
+    <div class="brand">
+      <div class="mark">GB</div>
+      <div>
+        <h1>GovBridge</h1>
+        <p>Department Live Database Explorer — Shortlisted Startups Sync</p>
+      </div>
+    </div>
+    <a href="/index.html" class="nav-back-btn">← Back to Gazette Opportunities</a>
+  </div>
+  <hr class="rule-double">
+</div>
+
+<!-- LIVE STATS BANNER -->
+<div class="stats-banner">
+  <div class="stat-card">
+    <label>📊 Total Applications Evaluated</label>
+    <div class="val" id="statTotal">0</div>
+  </div>
+  <div class="stat-card">
+    <label>✅ Saved in MongoDB (Eligible Only)</label>
+    <div class="val" style="color:var(--green);" id="statSelected">0</div>
+  </div>
+  <div class="stat-card">
+    <label>❌ Ineligible (Filtered Out)</label>
+    <div class="val" style="color:var(--rust);" id="statRejected">0</div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="db-card">
+    <div class="db-header">
+      <h2>🗄️ Department Shortlisted Database (Live MongoDB View)</h2>
+      <button class="refresh-btn" onclick="fetchDbRecords()">🔄 Refresh Records</button>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--ink-soft);margin-bottom:16px;">
+      This table displays all startup applications stored in the <b>MongoDB <code>govbridge</code> database</b> (`startups` collection). Ineligible applications are automatically filtered out.
+    </p>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Applicant Name / Sector</th>
+            <th>Experience</th>
+            <th>Turnover</th>
+            <th>DPIIT Status</th>
+            <th>AI Match Score</th>
+            <th>Status</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="dbTableBody">
+          <tr><td colspan="7" style="text-align:center;color:var(--ink-soft);">Loading live records from MongoDB database...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer>GovBridge Department Database View — Smart India Hackathon 2026 Presentation.</footer>
+
+<script>
+async function fetchDbRecords() {
+  const tbody = document.getElementById('dbTableBody');
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--ink-soft);">Fetching live records...</td></tr>`;
+
+  try {
+    const res = await fetch('/api/startup/all/list');
+    const data = await res.json();
+
+    if (!data.success || !data.data || data.data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--ink-soft);">No eligible records saved in database yet. Submit an eligible application on the Gazette home page!</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.data.map(item => `
+      <tr>
+        <td style="font-weight:600;color:var(--navy);">${item.name || 'Startup'}</td>
+        <td>${item.extractedData?.experience_years ?? 0} Years</td>
+        <td>${item.extractedData?.turnover || 'N/A'}</td>
+        <td>${item.extractedData?.dpiit_registered ? '✅ Yes' : '❌ No'}</td>
+        <td style="font-weight:700;color:var(--green);">${item.eligibilityScore || 0}%</td>
+        <td><span class="badge-shortlisted">SHORTLISTED</span></td>
+        <td style="font-size:12px;color:var(--ink-soft);">${new Date(item.createdAt || Date.now()).toLocaleString()}</td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--rust);">Failed to fetch database records: ${err.message}</td></tr>`;
+  }
+}
+
+function updateStats(stats) {
+  if (!stats) return;
+  document.getElementById('statTotal').innerText = stats.totalAnalyzed || 0;
+  document.getElementById('statSelected').innerText = stats.selected || 0;
+  document.getElementById('statRejected').innerText = stats.rejected || 0;
+}
+
+fetch('/api/extraction/stats').then(r=>r.json()).then(d=>updateStats(d.stats)).catch(()=>{});
+fetchDbRecords();
+</script>
+
+</body>
+</html>

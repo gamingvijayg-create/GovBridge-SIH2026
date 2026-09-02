@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GovBridge — NextGen Government & Startup Procurement Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+              900: '#1e3a8a'
+            },
+            accent: {
+              500: '#3b82f6',
+              green: '#10b981',
+              amber: '#f59e0b',
+              purple: '#8b5cf6'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- React & React Router CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #0f172a; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Token & Auth Helper
+    const getToken = () => localStorage.getItem('govbridge_token');
+    const getUser = () => {
+      try { return JSON.parse(localStorage.getItem('govbridge_user')); }
+      catch(e) { return null; }
+    };
+    const setAuth = (token, user) => {
+      localStorage.setItem('govbridge_token', token);
+      localStorage.setItem('govbridge_user', JSON.stringify(user));
+    };
+    const logout = () => {
+      localStorage.removeItem('govbridge_token');
+      localStorage.removeItem('govbridge_user');
+      window.location.hash = '#/';
+      window.location.reload();
+    };
+
+    // ==========================================
+    // NAVBAR COMPONENT (Matching Reference Image)
+    // ==========================================
+    function Navbar({ currentPath, user }) {
+      return (
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            {/* Logo matching emblem & NextGen Tenders visual layout */}
+            <a href="#/" className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full border-2 border-amber-600 bg-amber-50 flex items-center justify-center font-bold text-amber-700 text-lg shadow-sm">
+                🏛️
+              </div>
+              <div>
+                <div className="flex items-center gap-1">
+                  <span className="font-extrabold text-2xl tracking-tight text-slate-900">NextGen</span>
+                  <span className="font-bold text-2xl tracking-tight text-emerald-600">TENDERS</span>
+                </div>
+                <div className="text-[10px] uppercase font-bold tracking-widest text-slate-500 -mt-1">
+                  Innovate. Pilot. Procure. Scale.
+                </div>
+              </div>
+            </a>
+
+            {/* Nav Items */}
+            <nav className="hidden md:flex items-center gap-8 font-semibold text-sm text-slate-700">
+              <a href="#/" className={`hover:text-blue-600 transition ${currentPath==='/'?'text-blue-600 font-bold border-b-2 border-blue-600 py-6':''}`}>Home</a>
+              <a href="#/problem-statements" className={`hover:text-blue-600 transition ${currentPath==='/problem-statements'?'text-blue-600 font-bold border-b-2 border-blue-600 py-6':''}`}>Problem Statements</a>
+              <a href="#/startup/register" className={`hover:text-blue-600 transition ${currentPath==='/startup/register'?'text-blue-600 font-bold border-b-2 border-blue-600 py-6':''}`}>Startups</a>
+              <a href="#/#how-it-works" className="hover:text-blue-600 transition">How It Works</a>
+              {user && user.role === 'admin' && (
+                <a href="#/admin/dashboard" className={`text-amber-700 font-bold hover:text-amber-800 transition ${currentPath==='/admin/dashboard'?'border-b-2 border-amber-600 py-6':''}`}>👑 Admin Dashboard</a>
+              )}
+              {user && user.role === 'startup' && (
+                <a href="#/startup/dashboard" className="text-blue-600 font-bold">My Dashboard</a>
+              )}
+            </nav>
+
+            {/* Auth Buttons */}
+            <div className="flex items-center gap-3">
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold bg-slate-100 px-3 py-1.5 rounded-full text-slate-700">
+                    👤 {user.name} ({user.role})
+                  </span>
+                  <button onClick={logout} className="text-xs font-bold text-rose-600 hover:text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 transition">
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <a href="#/login" className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-700 hover:bg-slate-100 transition">
+                    Login
+                  </a>
+                  <a href="#/startup/register" className="px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition">
+                    Register
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    // ==========================================
+    // HOME PAGE (Strictly Matching Attached Image)
+    // ==========================================
+    function HomePage() {
+      return (
+        <div className="space-y-16 pb-20">
+          {/* Hero Section */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 lg:pt-16">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+              {/* Left Column Text */}
+              <div className="lg:col-span-7 space-y-6">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.15]">
+                  Bridging Government Needs with <span className="text-blue-600">Startup Innovation</span>
+                </h1>
+                <p className="text-lg text-slate-600 max-w-2xl leading-relaxed">
+                  An end-to-end procurement mechanism that helps government departments discover, pilot, procure and scale innovative solutions from eligible startups.
+                </p>
+                <div className="flex flex-wrap items-center gap-4 pt-2">
+                  <a href="#/problem-statements" className="inline-flex items-center gap-2 px-7 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 transition transform hover:-translate-y-0.5">
+                    Explore Problem Statements <span>→</span>
+                  </a>
+                  <a href="#/startup/register" className="inline-flex items-center gap-2 px-7 py-3.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold rounded-xl transition">
+                    Register as Startup <span>🚀</span>
+                  </a>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 pt-2">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs">✓</span>
+                  Trusted platform for collaboration, transparency & innovation
+                </div>
+              </div>
+
+              {/* Right Column Graphic Illustration (Matching reference handshake graphic) */}
+              <div className="lg:col-span-5 relative">
+                <div className="bg-gradient-to-tr from-blue-50 to-indigo-50/50 rounded-3xl p-8 border border-blue-100 shadow-xl relative overflow-hidden">
+                  <div className="text-center space-y-6 relative z-10">
+                    <div className="flex justify-center items-center gap-8">
+                      <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-100 text-center">
+                        <div className="text-3xl">🏛️</div>
+                        <div className="text-xs font-bold text-slate-800 mt-1">Government</div>
+                        <div className="text-[10px] text-blue-600 font-semibold">Post Needs</div>
+                      </div>
+                      <div className="text-2xl text-blue-500 font-bold">🤝</div>
+                      <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-100 text-center">
+                        <div className="text-3xl">🚀</div>
+                        <div className="text-xs font-bold text-slate-800 mt-1">Startup</div>
+                        <div className="text-[10px] text-emerald-600 font-semibold">Solve & Scale</div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-slate-200/60 shadow-sm text-left text-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-800">🔍 Discover Startups</span>
+                        <span className="bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded text-[10px]">AI Matched</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-800">📝 Procure Smartly</span>
+                        <span className="bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded text-[10px]">GeM Aligned</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 5 Metric Stat Cards Bar (Matching Reference Image) */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-md grid grid-cols-2 md:grid-cols-5 gap-6 text-center divide-x divide-slate-100">
+              <div className="space-y-1">
+                <div className="text-blue-600 text-2xl font-black">15+</div>
+                <div className="text-xs font-semibold text-slate-500">Government Departments</div>
+              </div>
+              <div className="space-y-1 pl-4">
+                <div className="text-emerald-600 text-2xl font-black">20+</div>
+                <div className="text-xs font-semibold text-slate-500">Registered Startups</div>
+              </div>
+              <div className="space-y-1 pl-4">
+                <div className="text-indigo-600 text-2xl font-black">30+</div>
+                <div className="text-xs font-semibold text-slate-500">Problem Statements</div>
+              </div>
+              <div className="space-y-1 pl-4">
+                <div className="text-purple-600 text-2xl font-black">17+</div>
+                <div className="text-xs font-semibold text-slate-500">Pilots Completed</div>
+              </div>
+              <div className="space-y-1 pl-4">
+                <div className="text-amber-600 text-2xl font-black">45+</div>
+                <div className="text-xs font-semibold text-slate-500">Scaled Solutions</div>
+              </div>
+            </div>
+          </section>
+
+          {/* "I am here as" Persona Grid Section (Matching Reference Image) */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+            <h2 className="text-2xl font-bold text-center text-slate-900">I am here as</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Persona 1 */}
+              <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-6 hover:shadow-lg transition space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-md">
+                  🏛️
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Department Official</h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Post problem statements, discover startups and run pilots
+                  </p>
+                </div>
+                <a href="#/login" className="inline-block text-xs font-bold text-blue-600 hover:text-blue-700">
+                  Login / Register →
+                </a>
+              </div>
+
+              {/* Persona 2 */}
+              <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-6 hover:shadow-lg transition space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xl shadow-md">
+                  🚀
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Startup</h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Find opportunities, participate in pilots and grow with government
+                  </p>
+                </div>
+                <a href="#/startup/register" className="inline-block text-xs font-bold text-emerald-600 hover:text-emerald-700">
+                  Login / Register →
+                </a>
+              </div>
+
+              {/* Persona 3 */}
+              <div className="bg-purple-50/50 border border-purple-100 rounded-2xl p-6 hover:shadow-lg transition space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-purple-600 text-white flex items-center justify-center text-xl shadow-md">
+                  👥
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Evaluator / Expert</h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Evaluate solutions and help select the best innovations
+                  </p>
+                </div>
+                <a href="#/login" className="inline-block text-xs font-bold text-purple-600 hover:text-purple-700">
+                  Login / Register →
+                </a>
+              </div>
+
+              {/* Persona 4 */}
+              <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-6 hover:shadow-lg transition space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-600 text-white flex items-center justify-center text-xl shadow-md">
+                  💼
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Procurement Officer</h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Manage procurement, contracts and scale-up processes
+                  </p>
+                </div>
+                <a href="#/login" className="inline-block text-xs font-bold text-amber-600 hover:text-amber-700">
+                  Login / Register →
+                </a>
+              </div>
+            </div>
+          </section>
+
+          {/* How It Works 5-Step Flow Section (Matching Reference Image) */}
+          <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 pt-6">
+            <h2 className="text-2xl font-bold text-center text-slate-900">How It Works</h2>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl text-center space-y-3 relative">
+                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center mx-auto text-lg">
+                  📝
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">1. Challenge</h4>
+                <p className="text-xs text-slate-500">Departments post outcome-based problem statements</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl text-center space-y-3 relative">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 font-bold flex items-center justify-center mx-auto text-lg">
+                  🔍
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">2. Discover</h4>
+                <p className="text-xs text-slate-500">Startups discover and express interest via AI evaluation</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl text-center space-y-3 relative">
+                <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 font-bold flex items-center justify-center mx-auto text-lg">
+                  📊
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">3. Evaluate</h4>
+                <p className="text-xs text-slate-500">Experts evaluate solutions and shortlist the best</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl text-center space-y-3 relative">
+                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 font-bold flex items-center justify-center mx-auto text-lg">
+                  🚀
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">4. Pilot</h4>
+                <p className="text-xs text-slate-500">Run structured pilots with clear milestones and KPIs</p>
+              </div>
+
+              <div className="bg-white border border-slate-200 p-5 rounded-2xl text-center space-y-3 relative">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center mx-auto text-lg">
+                  📈
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">5. Procure & Scale</h4>
+                <p className="text-xs text-slate-500">Procure successful solutions and scale the impact</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // MULTI-STEP STARTUP REGISTRATION & EVALUATION
+    // ==========================================
+    function StartupRegisterPage() {
+      const [step, setStep] = useState(1);
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+
+      const [formData, setFormData] = useState({
+        startupName: '',
+        founderName: '',
+        phone: '',
+        location: '',
+        sector: 'AgriTech',
+        description: '',
+        dpiitRegistered: true,
+        dpiitNumber: '',
+        turnover: '50 Lakhs',
+        experienceYears: 4,
+        resumeText: ''
+      });
+
+      const [file, setFile] = useState(null);
+      const [teamMembers, setTeamMembers] = useState([
+        { name: '', role: 'Founder & Tech Lead', skills: 'AI, React, Node.js', experienceYears: 5 }
+      ]);
+
+      const handleAddTeamMember = () => {
+        setTeamMembers([...teamMembers, { name: '', role: 'Software Engineer', skills: '', experienceYears: 1 }]);
+      };
+
+      const handleRemoveTeamMember = (index) => {
+        setTeamMembers(teamMembers.filter((_, i) => i !== index));
+      };
+
+      const handleSubmitEvaluation = async () => {
+        setLoading(true);
+        const data = new FormData();
+        Object.keys(formData).forEach(key => data.append(key, formData[key]));
+        data.append('teamMembers', JSON.stringify(teamMembers));
+        if (file) data.append('file', file);
+
+        try {
+          const res = await fetch('/api/startups/evaluate', {
+            method: 'POST',
+            body: data
+          });
+          const json = await res.json();
+          setLoading(false);
+          if (json.success) {
+            setResult(json);
+            setStep(4);
+          } else {
+            alert('Error: ' + json.error);
+          }
+        } catch (err) {
+          setLoading(false);
+          alert('Network Error: ' + err.message);
+        }
+      };
+
+      return (
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl space-y-8">
+            {/* Multi-step Header Indicator */}
+            <div className="border-b border-slate-200 pb-6">
+              <h2 className="text-2xl font-bold text-slate-900">Startup Registration & AI Evaluation</h2>
+              <p className="text-xs text-slate-500 mt-1">Complete profile submission to evaluate eligibility and discover matching problem statements.</p>
+              
+              <div className="grid grid-cols-4 gap-2 mt-6">
+                <div className={`h-2 rounded-full ${step>=1?'bg-blue-600':'bg-slate-200'}`}></div>
+                <div className={`h-2 rounded-full ${step>=2?'bg-blue-600':'bg-slate-200'}`}></div>
+                <div className={`h-2 rounded-full ${step>=3?'bg-blue-600':'bg-slate-200'}`}></div>
+                <div className={`h-2 rounded-full ${step>=4?'bg-blue-600':'bg-slate-200'}`}></div>
+              </div>
+              <div className="flex justify-between text-[11px] font-bold text-slate-500 mt-2">
+                <span>1. Startup Info</span>
+                <span>2. Team Info</span>
+                <span>3. Resume Document</span>
+                <span>4. Evaluation</span>
+              </div>
+            </div>
+
+            {/* STEP 1: Startup Information */}
+            {step === 1 && (
+              <div className="space-y-6">
+                <h3 className="font-bold text-lg text-slate-900">Step 1: Startup & Founder Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
+                  <div>
+                    <label>Startup Name *</label>
+                    <input type="text" className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={formData.startupName} onChange={e=>setFormData({...formData, startupName: e.target.value})} placeholder="e.g. TechNova Solutions Pvt Ltd" />
+                  </div>
+                  <div>
+                    <label>Founder Name *</label>
+                    <input type="text" className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={formData.founderName} onChange={e=>setFormData({...formData, founderName: e.target.value})} placeholder="e.g. Vijay Sarathi" />
+                  </div>
+                  <div>
+                    <label>Phone Number</label>
+                    <input type="text" className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} placeholder="+91 9876543210" />
+                  </div>
+                  <div>
+                    <label>Location / City</label>
+                    <input type="text" className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={formData.location} onChange={e=>setFormData({...formData, location: e.target.value})} placeholder="e.g. Bengaluru, India" />
+                  </div>
+                  <div>
+                    <label>Startup Sector *</label>
+                    <select className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={formData.sector} onChange={e=>setFormData({...formData, sector: e.target.value})}>
+                      <option value="AgriTech">AgriTech</option>
+                      <option value="HealthTech">HealthTech</option>
+                      <option value="CleanTech">CleanTech</option>
+                      <option value="FinTech">FinTech</option>
+                      <option value="Software">Software & AI</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Years of Experience *</label>
+                    <input type="number" className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={formData.experienceYears} onChange={e=>setFormData({...formData, experienceYears: Number(e.target.value)})} />
+                  </div>
+                  <div>
+                    <label>DPIIT Registered Startup?</label>
+                    <select className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={formData.dpiitRegistered} onChange={e=>setFormData({...formData, dpiitRegistered: e.target.value==='true'})}>
+                      <option value="true">Yes (DPIIT Recognized)</option>
+                      <option value="false">No (Not Registered)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Annual Turnover (INR)</label>
+                    <input type="text" className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={formData.turnover} onChange={e=>setFormData({...formData, turnover: e.target.value})} placeholder="e.g. 60 Lakhs" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Startup Executive Overview</label>
+                  <textarea className="w-full mt-1 p-3 border border-slate-200 rounded-xl h-24 text-xs outline-none focus:border-blue-600" value={formData.description} onChange={e=>setFormData({...formData, description: e.target.value})} placeholder="Briefly describe your product, target domain, and technology capability..."></textarea>
+                </div>
+
+                <div className="flex justify-between pt-4">
+                  <button onClick={()=>setStep(2)} className="ml-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+                    Next: Team Info →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: Team Members */}
+            {step === 2 && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-lg text-slate-900">Step 2: Team Information</h3>
+                  <button onClick={handleAddTeamMember} className="text-xs font-bold text-blue-600 border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100">
+                    + Add Team Member
+                  </button>
+                </div>
+
+                {teamMembers.map((member, index) => (
+                  <div key={index} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 relative">
+                    {teamMembers.length > 1 && (
+                      <button onClick={()=>handleRemoveTeamMember(index)} className="absolute top-3 right-3 text-xs text-rose-600 font-bold">
+                        ✕ Remove
+                      </button>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-semibold">
+                      <div>
+                        <label>Member Name</label>
+                        <input type="text" className="w-full mt-1 p-2.5 border border-slate-200 rounded-lg" value={member.name} onChange={e=>{
+                          const updated = [...teamMembers]; updated[index].name = e.target.value; setTeamMembers(updated);
+                        }} placeholder="e.g. Rahul Sharma" />
+                      </div>
+                      <div>
+                        <label>Role</label>
+                        <input type="text" className="w-full mt-1 p-2.5 border border-slate-200 rounded-lg" value={member.role} onChange={e=>{
+                          const updated = [...teamMembers]; updated[index].role = e.target.value; setTeamMembers(updated);
+                        }} placeholder="e.g. Lead Architect" />
+                      </div>
+                      <div>
+                        <label>Key Skills</label>
+                        <input type="text" className="w-full mt-1 p-2.5 border border-slate-200 rounded-lg" value={member.skills} onChange={e=>{
+                          const updated = [...teamMembers]; updated[index].skills = e.target.value; setTeamMembers(updated);
+                        }} placeholder="e.g. Python, OpenCV, Cloud" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex justify-between pt-4">
+                  <button onClick={()=>setStep(1)} className="px-6 py-3 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl">
+                    ← Back
+                  </button>
+                  <button onClick={()=>setStep(3)} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md">
+                    Next: Upload Document →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: Resume / Document Upload */}
+            {step === 3 && (
+              <div className="space-y-6">
+                <h3 className="font-bold text-lg text-slate-900">Step 3: Company Profile / Resume Document</h3>
+                
+                <div className="border-2 border-dashed border-blue-300 bg-blue-50/50 rounded-2xl p-8 text-center cursor-pointer" onClick={()=>document.getElementById('fileUpload').click()}>
+                  <div className="text-4xl">📁</div>
+                  <div className="text-sm font-bold text-slate-800 mt-2">
+                    {file ? `Selected File: ${file.name}` : 'Click or Drag & Drop Resume File (.pdf, .docx, .txt)'}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">Maximum file size: 10MB</div>
+                  <input type="file" id="fileUpload" accept=".pdf,.docx,.txt" className="hidden" onChange={e=>setFile(e.target.files[0])} />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Or Paste Resume / Capability Details Text</label>
+                  <textarea className="w-full mt-1 p-3 border border-slate-200 rounded-xl h-28 text-xs outline-none focus:border-blue-600" value={formData.resumeText} onChange={e=>setFormData({...formData, resumeText: e.target.value})} placeholder="Paste technical expertise, past government projects, turnover proof text..."></textarea>
+                </div>
+
+                <div className="flex justify-between pt-4">
+                  <button onClick={()=>setStep(2)} className="px-6 py-3 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl">
+                    ← Back
+                  </button>
+                  <button onClick={handleSubmitEvaluation} disabled={loading} className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20">
+                    {loading ? '⚡ Running Groq AI Evaluation...' : '⚡ Submit for Evaluation →'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: Evaluation Results Display */}
+            {step === 4 && result && (
+              <div className="space-y-6">
+                <div className="text-center space-y-2">
+                  <div className="text-5xl">{result.eligibilityResult.isEligible ? '🎉' : '⚠️'}</div>
+                  <h3 className="text-2xl font-bold text-slate-900">Evaluation Result</h3>
+                </div>
+
+                <div className={`p-6 rounded-2xl border ${result.eligibilityResult.isEligible ? 'bg-emerald-50 border-emerald-200 text-emerald-900':'bg-rose-50 border-rose-200 text-rose-900'} space-y-4`}>
+                  <div className="flex justify-between items-center">
+                    <span className="font-extrabold text-lg">
+                      {result.eligibilityResult.isEligible ? '🟢 ELIGIBLE & SHORTLISTED' : '🔴 INELIGIBLE (FILTERED OUT)'}
+                    </span>
+                    <span className="text-3xl font-black">{result.eligibilityResult.eligibilityScore} / 100</span>
+                  </div>
+
+                  <p className="text-xs leading-relaxed font-medium">
+                    <b>AI Reasoning:</b> {result.eligibilityResult.reasoning}
+                  </p>
+
+                  {!result.eligibilityResult.isEligible && result.eligibilityResult.rejectionReasons && (
+                    <div className="space-y-1 pt-2">
+                      <div className="text-xs font-bold text-rose-800">Rejection Reasons:</div>
+                      <ul className="list-disc pl-5 text-xs">
+                        {result.eligibilityResult.rejectionReasons.map((r,i)=><li key={i}>{r}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Recommended Problem Statements */}
+                <div className="space-y-3 pt-4">
+                  <h4 className="font-bold text-slate-900 text-sm">Recommended Government Problem Statements:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {result.recommendedProblemStatements.map((ps) => (
+                      <div key={ps.id} className="bg-white border border-slate-200 p-4 rounded-xl space-y-2">
+                        <div className="text-xs font-bold text-blue-600">{ps.category}</div>
+                        <div className="font-bold text-slate-900 text-sm">{ps.title}</div>
+                        <div className="text-xs text-slate-500">{ps.department}</div>
+                        <a href="#/problem-statements" className="inline-block text-xs font-bold text-blue-600 mt-2">View & Apply →</a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="text-center pt-4">
+                  <a href="#/problem-statements" className="inline-block px-8 py-3.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-md">
+                    Explore Problem Statements Explorer →
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // PROBLEM STATEMENTS EXPLORER (With Atlas Vector Match)
+    // ==========================================
+    function ProblemStatementsPage() {
+      const [items, setItems] = useState([]);
+      const [search, setSearch] = useState('');
+      const [category, setCategory] = useState('All');
+      const [selectedPS, setSelectedPS] = useState(null);
+
+      useEffect(() => {
+        fetch(`/api/problem-statements?search=${search}&category=${category}`)
+          .then(r=>r.json())
+          .then(d=>{ if(d.success) setItems(d.data); });
+      }, [search, category]);
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h2 className="text-3xl font-extrabold text-slate-900">Government Problem Statements</h2>
+              <p className="text-xs text-slate-500 mt-1">Discover active department procurement challenges with Atlas Vector Search matching.</p>
+            </div>
+            
+            {/* Filter controls */}
+            <div className="flex gap-3 w-full md:w-auto">
+              <input type="text" placeholder="Search challenges..." className="p-3 border border-slate-200 rounded-xl text-xs w-full md:w-64 outline-none focus:border-blue-600" value={search} onChange={e=>setSearch(e.target.value)} />
+              <select className="p-3 border border-slate-200 rounded-xl text-xs outline-none" value={category} onChange={e=>setCategory(e.target.value)}>
+                <option value="All">All Sectors</option>
+                <option value="AgriTech">AgriTech</option>
+                <option value="HealthTech">HealthTech</option>
+                <option value="CleanTech">CleanTech</option>
+                <option value="FinTech">FinTech</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {items.map(ps => (
+              <div key={ps._id} className="bg-white border border-slate-200 rounded-2xl p-6 hover:shadow-xl transition space-y-4">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">
+                    {ps.category}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">Deadline: {ps.deadline}</span>
+                </div>
+
+                <h3 className="font-extrabold text-lg text-slate-900">{ps.title}</h3>
+                <p className="text-xs text-slate-500 font-semibold">{ps.department}</p>
+                <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">{ps.description}</p>
+
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {(ps.requiredSkills || []).map((s,i)=>(
+                    <span key={i} className="text-[11px] bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md font-medium">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-700">Min Exp: {ps.minimumExperience} Yrs</span>
+                  <button onClick={()=>setSelectedPS(ps)} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition">
+                    View Details & Apply
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Modal Drawer */}
+          {selectedPS && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-8 max-w-2xl w-full space-y-6 max-h-[90vh] overflow-y-auto relative">
+                <button onClick={()=>setSelectedPS(null)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 font-bold">✕</button>
+                
+                <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">
+                  {selectedPS.category}
+                </span>
+                <h3 className="text-2xl font-extrabold text-slate-900">{selectedPS.title}</h3>
+                <p className="text-xs text-slate-500 font-bold">{selectedPS.department}</p>
+                
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Description</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">{selectedPS.description}</p>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+                  <h4 className="font-bold text-slate-800">Eligibility & Criteria</h4>
+                  <p className="text-slate-600">{selectedPS.eligibilityCriteria}</p>
+                </div>
+
+                <div className="flex justify-between items-center pt-4">
+                  <a href="#/startup/register" className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md">
+                    Apply & Evaluate Startup Resume →
+                  </a>
+                  <button onClick={()=>setSelectedPS(null)} className="px-5 py-3 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl">
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==========================================
+    // ADMIN DASHBOARD PAGE
+    // ==========================================
+    function AdminDashboardPage({ user }) {
+      const [applications, setApplications] = useState([]);
+      const [shortlisted, setShortlisted] = useState([]);
+      const [stats, setStats] = useState({});
+      const [sectorFilter, setSectorFilter] = useState('All');
+      const [dpiitFilter, setDpiitFilter] = useState('false');
+      const [selectedCandidate, setSelectedCandidate] = useState(null);
+      const [adminNotes, setAdminNotes] = useState('');
+
+      const fetchAdminData = () => {
+        fetch(`/api/admin/applications?sector=${sectorFilter}&dpiitOnly=${dpiitFilter}`, {
+          headers: { 'Authorization': `Bearer ${getToken()}` }
+        })
+        .then(r=>r.json())
+        .then(d=>{
+          if(d.success) {
+            setApplications(d.data);
+            setStats(d.stats);
+          }
+        });
+
+        fetch('/api/admin/shortlisted', {
+          headers: { 'Authorization': `Bearer ${getToken()}` }
+        })
+        .then(r=>r.json())
+        .then(d=>{ if(d.success) setShortlisted(d.data); });
+      };
+
+      useEffect(() => {
+        fetchAdminData();
+      }, [sectorFilter, dpiitFilter]);
+
+      const handleShortlistCandidate = async (appId) => {
+        try {
+          const res = await fetch(`/api/admin/shortlist/${appId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${getToken()}`
+            },
+            body: JSON.stringify({ adminNotes })
+          });
+          const json = await res.json();
+          if(json.success) {
+            alert('Candidate saved to Admin Shortlisted collection!');
+            setSelectedCandidate(null);
+            fetchAdminData();
+          }
+        } catch(e) { alert(e.message); }
+      };
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-3xl font-extrabold text-slate-900">👑 Admin Procurement Dashboard</h2>
+              <p className="text-xs text-slate-500 mt-1">Review eligible candidates, save shortlisted startups, and manage problem statements.</p>
+            </div>
+            <span className="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full border border-amber-200">
+              Admin Logged In
+            </span>
+          </div>
+
+          {/* Overview Stat Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl">
+              <div className="text-xs font-bold text-slate-500 uppercase">Total Applications</div>
+              <div className="text-3xl font-extrabold text-slate-900 mt-1">{stats.totalApplicationsCount || 0}</div>
+            </div>
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl">
+              <div className="text-xs font-bold text-emerald-600 uppercase">Eligible Startups</div>
+              <div className="text-3xl font-extrabold text-emerald-600 mt-1">{stats.eligibleCount || 0}</div>
+            </div>
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl">
+              <div className="text-xs font-bold text-amber-600 uppercase">Shortlisted Resumes</div>
+              <div className="text-3xl font-extrabold text-amber-600 mt-1">{stats.shortlistedCount || 0}</div>
+            </div>
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl">
+              <div className="text-xs font-bold text-rose-600 uppercase">Rejected / Ineligible</div>
+              <div className="text-3xl font-extrabold text-rose-600 mt-1">{stats.rejectedCount || 0}</div>
+            </div>
+          </div>
+
+          {/* Candidate Filters */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-slate-900 text-sm">Candidate Candidate Filters</h3>
+              <div className="flex gap-3">
+                <select className="p-2 border border-slate-200 rounded-lg text-xs" value={sectorFilter} onChange={e=>setSectorFilter(e.target.value)}>
+                  <option value="All">All Sectors</option>
+                  <option value="AgriTech">AgriTech</option>
+                  <option value="HealthTech">HealthTech</option>
+                  <option value="CleanTech">CleanTech</option>
+                  <option value="FinTech">FinTech</option>
+                </select>
+                <select className="p-2 border border-slate-200 rounded-lg text-xs" value={dpiitFilter} onChange={e=>setDpiitFilter(e.target.value)}>
+                  <option value="false">All DPIIT Status</option>
+                  <option value="true">DPIIT Only</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Applications Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-700">
+                    <th className="p-3">Startup Name</th>
+                    <th className="p-3">Sector</th>
+                    <th className="p-3">Experience</th>
+                    <th className="p-3">DPIIT</th>
+                    <th className="p-3">Score</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {applications.map(app => (
+                    <tr key={app._id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="p-3 font-bold text-slate-900">{app.startupName}</td>
+                      <td className="p-3 text-slate-600">{app.sector}</td>
+                      <td className="p-3 text-slate-600">{app.experienceYears} Yrs</td>
+                      <td className="p-3">{app.dpiitRegistered ? '✅ Yes' : '❌ No'}</td>
+                      <td className="p-3 font-extrabold text-blue-600">{app.eligibilityScore}/100</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${app.status==='shortlisted'?'bg-amber-100 text-amber-800':app.status==='eligible'?'bg-emerald-100 text-emerald-800':'bg-rose-100 text-rose-800'}`}>
+                          {app.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <button onClick={()=>setSelectedCandidate(app)} className="px-3 py-1 bg-blue-600 text-white rounded font-bold hover:bg-blue-700">
+                          Review & Shortlist
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Shortlisting Modal */}
+          {selectedCandidate && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-8 max-w-xl w-full space-y-6 relative">
+                <button onClick={()=>setSelectedCandidate(null)} className="absolute top-6 right-6 font-bold text-slate-400">✕</button>
+                <h3 className="text-xl font-bold text-slate-900">Review Candidate: {selectedCandidate.startupName}</h3>
+                
+                <div className="text-xs space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div><b>Founder:</b> {selectedCandidate.founderName} ({selectedCandidate.phone})</div>
+                  <div><b>Sector:</b> {selectedCandidate.sector} | <b>Experience:</b> {selectedCandidate.experienceYears} Years</div>
+                  <div><b>Turnover:</b> {selectedCandidate.turnover} | <b>DPIIT:</b> {selectedCandidate.dpiitRegistered ? 'Yes' : 'No'}</div>
+                  <div className="pt-2 text-slate-600"><b>Resume Overview:</b> {selectedCandidate.rawResumeText.slice(0, 200)}...</div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Admin Notes / Shortlisting Reason</label>
+                  <textarea className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-600" value={adminNotes} onChange={e=>setAdminNotes(e.target.value)} placeholder="Add specific note on why this startup is selected for government pilot..."></textarea>
+                </div>
+
+                <div className="flex justify-between pt-2">
+                  <button onClick={()=>handleShortlistCandidate(selectedCandidate._id)} className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md">
+                    💾 Save to Admin Shortlisted Database
+                  </button>
+                  <button onClick={()=>setSelectedCandidate(null)} className="px-5 py-3 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl">
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==========================================
+    // LOGIN & SIGNUP PAGES
+    // ==========================================
+    function LoginPage({ setAuthUser }) {
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+
+      const handleLogin = async (e) => {
+        e.preventDefault();
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          const json = await res.json();
+          if (json.success) {
+            setAuth(json.token, json.user);
+            setAuthUser(json.user);
+            if (json.user.role === 'admin') window.location.hash = '#/admin/dashboard';
+            else window.location.hash = '#/startup/register';
+          } else {
+            alert('Login failed: ' + json.error);
+          }
+        } catch(err) { alert(err.message); }
+      };
+
+      return (
+        <div className="max-w-md mx-auto px-4 py-16">
+          <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl space-y-6">
+            <h2 className="text-2xl font-bold text-slate-900 text-center">Login to GovBridge</h2>
+            
+            <form onSubmit={handleLogin} className="space-y-4 text-xs font-semibold text-slate-700">
+              <div>
+                <label>Email Address</label>
+                <input type="email" required className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={email} onChange={e=>setEmail(e.target.value)} placeholder="admin@govbridge.gov.in or startup@mail.com" />
+              </div>
+              <div>
+                <label>Password</label>
+                <input type="password" required className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" />
+              </div>
+              <button type="submit" className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition">
+                Sign In →
+              </button>
+            </form>
+
+            <div className="text-center text-xs text-slate-500 pt-2">
+              Default Admin: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-800">admin@govbridge.gov.in</code> / <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-800">Admin@123456</code>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // FOOTER COMPONENT
+    function Footer() {
+      return (
+        <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 mt-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+            <div className="font-bold text-white text-lg">GovBridge — NextGen Procurement Platform</div>
+            <p className="text-xs max-w-xl mx-auto text-slate-400">
+              Aligning Indian Startup Innovation with Central & State Government Department Procurement Needs. Built for SIH 2026.
+            </p>
+            <div className="text-xs text-slate-600 pt-4">© 2026 GovBridge. All rights reserved.</div>
+          </div>
+        </footer>
+      );
+    }
+
+    // MAIN APP ROUTER
+    function App() {
+      const [currentPath, setCurrentPath] = useState(window.location.hash.replace('#', '') || '/');
+      const [authUser, setAuthUser] = useState(getUser());
+
+      useEffect(() => {
+        const handleHashChange = () => {
+          setCurrentPath(window.location.hash.replace('#', '') || '/');
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+      }, []);
+
+      return (
+        <div className="min-h-screen flex flex-col justify-between">
+          <div>
+            <Navbar currentPath={currentPath} user={authUser} />
+            <main>
+              {currentPath === '/' && <HomePage />}
+              {currentPath === '/login' && <LoginPage setAuthUser={setAuthUser} />}
+              {currentPath === '/startup/register' && <StartupRegisterPage />}
+              {currentPath === '/problem-statements' && <ProblemStatementsPage />}
+              {currentPath === '/admin/dashboard' && <AdminDashboardPage user={authUser} />}
+            </main>
+          </div>
+          <Footer />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

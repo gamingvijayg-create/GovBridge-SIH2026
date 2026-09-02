@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GovBridge — Government Opportunity Gazette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#16233F;
+    --navy-soft:#2A3B5E;
+    --paper:#F6F3EC;
+    --paper-raised:#FBF9F4;
+    --gold:#B98A2E;
+    --rust:#B8512E;
+    --ink:#24262B;
+    --ink-soft:#5B5A54;
+    --line:#D8D2C4;
+    --green:#3F6B4A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',sans-serif;
+    line-height:1.5;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .serif{font-family:'Source Serif 4',serif;}
+
+  /* Masthead */
+  .masthead{
+    background:var(--navy);
+    color:var(--paper);
+    padding:34px 8vw 26px;
+    border-bottom:6px solid var(--gold);
+  }
+  .masthead-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .mark{
+    width:46px;height:46px;
+    border:2px solid var(--gold);
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Source Serif 4',serif;
+    font-weight:700;
+    font-size:18px;
+    color:var(--gold);
+    flex-shrink:0;
+  }
+  .brand{display:flex;align-items:center;gap:14px;}
+  .brand h1{
+    font-family:'Source Serif 4',serif;
+    font-weight:700;
+    font-size:clamp(28px,4vw,40px);
+    margin:0;
+    letter-spacing:0.3px;
+  }
+  .brand p{
+    margin:4px 0 0;
+    font-size:14px;
+    color:#C8CEDC;
+    max-width:46ch;
+  }
+  .masthead-meta{
+    text-align:right;
+    font-size:12.5px;
+    color:#C8CEDC;
+    line-height:1.7;
+  }
+  .rule-double{
+    border:none;
+    border-top:1px solid var(--gold);
+    border-bottom:1px solid var(--gold);
+    height:3px;
+    margin-top:18px;
+  }
+
+  /* Intro */
+  .intro{
+    max-width:920px;
+    margin:44px auto 10px;
+    padding:0 8vw;
+  }
+  .intro .eyebrow{
+    font-size:13px;
+    color:var(--rust);
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .intro h2{
+    font-family:'Source Serif 4',serif;
+    font-size:clamp(22px,3vw,30px);
+    margin:0 0 12px;
+    max-width:24ch;
+  }
+  .intro p{
+    color:var(--ink-soft);
+    max-width:70ch;
+    font-size:15.5px;
+  }
+
+  /* Notice board */
+  .board{
+    max-width:920px;
+    margin:30px auto 80px;
+    padding:0 8vw;
+  }
+  .board-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    border-bottom:2px solid var(--navy);
+    padding-bottom:8px;
+    margin-bottom:4px;
+  }
+  .board-head h3{
+    font-family:'Source Serif 4',serif;
+    font-size:18px;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  .board-head span{
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+
+  .notice{
+    border-bottom:1px solid var(--line);
+    padding:26px 0;
+  }
+  .notice:first-of-type{padding-top:20px;}
+
+  .notice-top{
+    display:flex;
+    gap:18px;
+    align-items:flex-start;
+    cursor:pointer;
+  }
+  .notice-no{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    white-space:nowrap;
+    padding-top:4px;
+    min-width:88px;
+  }
+  .notice-body{flex:1;min-width:0;}
+  .notice-title{
+    font-family:'Source Serif 4',serif;
+    font-size:19px;
+    font-weight:600;
+    margin:0 0 6px;
+    color:var(--navy);
+  }
+  .notice-dept{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+  .tags{display:flex;gap:8px;flex-wrap:wrap;}
+  .tag{
+    font-size:11.5px;
+    padding:3px 9px;
+    border:1px solid var(--line);
+    border-radius:3px;
+    color:var(--ink-soft);
+    background:var(--paper-raised);
+  }
+  .tag.rust{color:var(--rust);border-color:#E3BBA9;}
+  .tag.green{color:var(--green);border-color:#BFD4C4;}
+
+  .chev{
+    font-size:20px;
+    color:var(--ink-soft);
+    transition:transform 0.25s ease;
+    padding-top:2px;
+  }
+  .notice.open .chev{transform:rotate(180deg);}
+
+  .notice-detail{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 0.35s ease;
+  }
+  .notice.open .notice-detail{max-height:600px;}
+  .notice-detail-inner{
+    padding:18px 0 4px 106px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px 30px;
+  }
+  @media (max-width:640px){
+    .notice-detail-inner{grid-template-columns:1fr;padding-left:0;margin-top:8px;}
+    .notice-no{min-width:auto;}
+  }
+  .detail-block h4{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    color:var(--ink-soft);
+    margin:0 0 6px;
+    font-weight:600;
+  }
+  .detail-block p{margin:0;font-size:14px;color:var(--ink);}
+  .detail-block ul{margin:0;padding-left:18px;font-size:14px;}
+  .detail-block li{margin-bottom:3px;}
+
+  .apply-row{
+    grid-column:1 / -1;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-top:6px;
+    flex-wrap:wrap;
+  }
+  .apply-btn{
+    background:var(--navy);
+    color:var(--paper);
+    border:none;
+    padding:10px 20px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    border-radius:3px;
+    cursor:pointer;
+  }
+  .apply-btn:hover{background:var(--navy-soft);}
+  .apply-btn:disabled{background:#9AA3B5;cursor:default;}
+
+  .match-result{
+    font-size:14px;
+    display:none;
+    align-items:center;
+    gap:10px;
+  }
+  .match-result.show{display:flex;}
+  .match-score{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    color:var(--green);
+    font-size:16px;
+  }
+  .bar-track{
+    width:120px;height:6px;background:var(--line);border-radius:4px;overflow:hidden;
+  }
+  .bar-fill{
+    height:100%;background:var(--green);width:0%;
+    transition:width 1s ease;
+  }
+
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    padding:0 8vw 40px;
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-top">
+    <div class="brand">
+      <div class="mark">GB</div>
+      <div>
+        <h1>GovBridge</h1>
+        <p>Direct government opportunity and eligibility platform for startups</p>
+      </div>
+    </div>
+    <div class="masthead-meta">
+      Government e-Marketplace &amp; Startup India aligned<br>
+      Notification cycle: Q3 2026
+    </div>
+  </div>
+  <hr class="rule-double">
+</div>
+
+<div class="intro">
+  <div class="eyebrow">Open Opportunities</div>
+  <h2>Departments have posted four problem statements this cycle</h2>
+  <p>Each notice below is a real government need. Read the eligibility criteria, then apply — GovBridge's AI checks your profile against the criteria instantly and sends a match score straight to the department, with no broker in between.</p>
+</div>
+
+<div class="board">
+  <div class="board-head">
+    <h3>Current Notices</h3>
+    <span>4 open · updated today</span>
+  </div>
+
+  <!-- Notice 1 -->
+  <div class="notice" data-id="1">
+    <div class="notice-top" onclick="toggleNotice(this.parentElement)">
+      <div class="notice-no mono">NGT/2026/01</div>
+      <div class="notice-body">
+        <p class="notice-title">Smart Crop Advisory for Smallholder Farmers</p>
+        <p class="notice-dept">Ministry of Agriculture &amp; Farmers Welfare</p>
+        <div class="tags">
+          <span class="tag">AgriTech</span>
+          <span class="tag rust">Software</span>
+          <span class="tag green">Pilot budget ₹40L</span>
+        </div>
+      </div>
+      <div class="chev">⌄</div>
+    </div>
+    <div class="notice-detail">
+      <div class="notice-detail-inner">
+        <div class="detail-block">
+          <h4>What the department needs</h4>
+          <p>A regional-language advisory tool that predicts pest outbreaks and irrigation timing from soil and weather data, usable on basic smartphones.</p>
+        </div>
+        <div class="detail-block">
+          <h4>Eligibility criteria</h4>
+          <ul>
+            <li>DPIIT-recognised startup</li>
+            <li>Incorporated within 7 years</li>
+            <li>Prior agri-data or IoT project (preferred, not mandatory)</li>
+          </ul>
+        </div>
+        <div class="apply-row">
+          <button class="apply-btn" onclick="runMatch(this,'1')">Apply Now</button>
+          <div class="match-result" id="match-1">
+            <div class="bar-track"><div class="bar-fill" id="bar-1"></div></div>
+            <span class="match-score" id="score-1"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notice 2 -->
+  <div class="notice" data-id="2">
+    <div class="notice-top" onclick="toggleNotice(this.parentElement)">
+      <div class="notice-no mono">NGT/2026/02</div>
+      <div class="notice-body">
+        <p class="notice-title">Interoperable Digital Health Records Layer</p>
+        <p class="notice-dept">Ministry of Health &amp; Family Welfare</p>
+        <div class="tags">
+          <span class="tag">HealthTech</span>
+          <span class="tag rust">Software</span>
+          <span class="tag green">Pilot budget ₹65L</span>
+        </div>
+      </div>
+      <div class="chev">⌄</div>
+    </div>
+    <div class="notice-detail">
+      <div class="notice-detail-inner">
+        <div class="detail-block">
+          <h4>What the department needs</h4>
+          <p>A secure layer that lets district hospitals exchange patient records with each other without a shared database, respecting consent at every step.</p>
+        </div>
+        <div class="detail-block">
+          <h4>Eligibility criteria</h4>
+          <ul>
+            <li>DPIIT-recognised startup</li>
+            <li>Data encryption &amp; consent-management experience</li>
+            <li>Turnover below ₹25 crore</li>
+          </ul>
+        </div>
+        <div class="apply-row">
+          <button class="apply-btn" onclick="runMatch(this,'2')">Apply Now</button>
+          <div class="match-result" id="match-2">
+            <div class="bar-track"><div class="bar-fill" id="bar-2"></div></div>
+            <span class="match-score" id="score-2"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notice 3 -->
+  <div class="notice" data-id="3">
+    <div class="notice-top" onclick="toggleNotice(this.parentElement)">
+      <div class="notice-no mono">NGT/2026/03</div>
+      <div class="notice-body">
+        <p class="notice-title">AI Sorting for Municipal Waste Segregation</p>
+        <p class="notice-dept">Ministry of Housing &amp; Urban Affairs</p>
+        <div class="tags">
+          <span class="tag">CleanTech</span>
+          <span class="tag rust">Hardware + Software</span>
+          <span class="tag green">Pilot budget ₹30L</span>
+        </div>
+      </div>
+      <div class="chev">⌄</div>
+    </div>
+    <div class="notice-detail">
+      <div class="notice-detail-inner">
+        <div class="detail-block">
+          <h4>What the department needs</h4>
+          <p>A low-cost computer-vision system for municipal collection centres that sorts recyclables from wet waste before landfill transport.</p>
+        </div>
+        <div class="detail-block">
+          <h4>Eligibility criteria</h4>
+          <ul>
+            <li>DPIIT-recognised startup</li>
+            <li>Working prototype (TRL 4+)</li>
+            <li>Willingness for on-site municipal pilot</li>
+          </ul>
+        </div>
+        <div class="apply-row">
+          <button class="apply-btn" onclick="runMatch(this,'3')">Apply Now</button>
+          <div class="match-result" id="match-3">
+            <div class="bar-track"><div class="bar-fill" id="bar-3"></div></div>
+            <span class="match-score" id="score-3"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notice 4 -->
+  <div class="notice" data-id="4">
+    <div class="notice-top" onclick="toggleNotice(this.parentElement)">
+      <div class="notice-no mono">NGT/2026/04</div>
+      <div class="notice-body">
+        <p class="notice-title">Vernacular Micro-Lending Risk Assessment</p>
+        <p class="notice-dept">Department of Financial Services</p>
+        <div class="tags">
+          <span class="tag">FinTech</span>
+          <span class="tag rust">Software</span>
+          <span class="tag green">Pilot budget ₹50L</span>
+        </div>
+      </div>
+      <div class="chev">⌄</div>
+    </div>
+    <div class="notice-detail">
+      <div class="notice-detail-inner">
+        <div class="detail-block">
+          <h4>What the department needs</h4>
+          <p>A credit-risk model for first-time rural borrowers using alternate data (utility payments, local trade history) instead of formal credit scores.</p>
+        </div>
+        <div class="detail-block">
+          <h4>Eligibility criteria</h4>
+          <ul>
+            <li>DPIIT-recognised startup</li>
+            <li>RBI sandbox or NBFC partnership (preferred)</li>
+            <li>Regional language product experience</li>
+          </ul>
+        </div>
+        <div class="apply-row">
+          <button class="apply-btn" onclick="runMatch(this,'4')">Apply Now</button>
+          <div class="match-result" id="match-4">
+            <div class="bar-track"><div class="bar-fill" id="bar-4"></div></div>
+            <span class="match-score" id="score-4"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>GovBridge prototype — demo data only, for Smart India Hackathon 2026 presentation.</footer>
+
+<script>
+function toggleNotice(el){
+  document.querySelectorAll('.notice').forEach(n=>{
+    if(n!==el) n.classList.remove('open');
+  });
+  el.classList.toggle('open');
+}
+
+function runMatch(btn,id){
+  btn.disabled = true;
+  btn.textContent = 'Matching…';
+  const scores = {1:87, 2:74, 3:91, 4:68};
+  const score = scores[id] || 80;
+  setTimeout(()=>{
+    const resultEl = document.getElementById('match-'+id);
+    const barEl = document.getElementById('bar-'+id);
+    const scoreEl = document.getElementById('score-'+id);
+    resultEl.classList.add('show');
+    scoreEl.textContent = score + '% eligibility match';
+    requestAnimationFrame(()=>{ barEl.style.width = score + '%'; });
+    btn.textContent = 'Submitted ✓';
+  }, 700);
+}
+</script>
+
+</body>
+</html>
