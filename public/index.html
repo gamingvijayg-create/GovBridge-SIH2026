@@ -29,17 +29,24 @@
       }
     }
   </script>
-  <!-- React & React Router CDNs -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- React & React Router CDNs (Cloudflare fast CDN fallback) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #0f172a; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; background: #f8fafc; color: #1e293b;">
+      <div style="text-align: center;">
+        <div style="font-size: 24px; font-weight: bold; margin-bottom: 8px;">🚀 GovBridge Portal</div>
+        <div style="font-size: 14px; color: #64748b;">Loading procurement interface...</div>
+      </div>
+    </div>
+  </div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -1279,7 +1286,16 @@
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    try {
+      const rootElement = document.getElementById('root');
+      if (ReactDOM.createRoot) {
+        ReactDOM.createRoot(rootElement).render(<App />);
+      } else if (ReactDOM.render) {
+        ReactDOM.render(<App />, rootElement);
+      }
+    } catch(err) {
+      console.error('Mounting Error:', err);
+    }
   </script>
 </body>
 </html>
