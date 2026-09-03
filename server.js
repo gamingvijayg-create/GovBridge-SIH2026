@@ -111,6 +111,6 @@ async function connectDatabase() {
 connectDatabase();
 
 // Start HTTP server
-app.listen(PORT, () => {
-  console.log(` GovBridge Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 GovBridge Server running on http://127.0.0.1:${PORT} and http://localhost:${PORT}`);
 });
