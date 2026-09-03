@@ -101,12 +101,20 @@ router.post('/semantic-match', async (req, res) => {
       if (!expPass) missingRequirements.push(`Requires minimum ${ps.minimumExperience} years experience (found ${exp} yrs)`);
       if (!dpiitPass) missingRequirements.push('Requires DPIIT registration');
 
+      const experienceValidation = {
+        required: ps.minimumExperience || 0,
+        actual: exp,
+        isValid: expPass,
+        statusLabel: expPass ? `✅ Valid (${exp} Yrs >= Min ${ps.minimumExperience || 0} Yrs)` : `❌ Invalid (${exp} Yrs < Required ${ps.minimumExperience || 0} Yrs)`
+      };
+
       return {
         problemStatement: ps,
         semanticMatchPercent,
         finalScore,
         isHardRuleEligible,
         isEligible: isHardRuleEligible && finalScore >= 50,
+        experienceValidation,
         missingRequirements
       };
     });

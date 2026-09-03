@@ -568,6 +568,23 @@
                   <h3 className="text-2xl font-bold text-slate-900">Evaluation Result</h3>
                 </div>
 
+                {/* Data Mismatch Warning Banner */}
+                {result.eligibilityResult.mismatchWarnings && result.eligibilityResult.mismatchWarnings.length > 0 && (
+                  <div className="bg-amber-50 border-2 border-amber-400 p-5 rounded-2xl space-y-2 text-amber-900 shadow-sm">
+                    <div className="flex items-center gap-2 font-black text-sm text-amber-900 uppercase tracking-wide">
+                      <span>⚠️ DETAIL MISMATCH DETECTED (REGISTER FORM VS RESUME TEXT)</span>
+                    </div>
+                    <p className="text-xs text-amber-800 font-medium">
+                      The details provided in your registration form do not match the parsed resume document:
+                    </p>
+                    <ul className="list-disc pl-5 text-xs font-semibold space-y-1 text-amber-900">
+                      {result.eligibilityResult.mismatchWarnings.map((warn, i) => (
+                        <li key={i}>{warn}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div className={`p-6 rounded-2xl border ${result.eligibilityResult.isEligible ? 'bg-emerald-50 border-emerald-200 text-emerald-900':'bg-rose-50 border-rose-200 text-rose-900'} space-y-4`}>
                   <div className="flex justify-between items-center">
                     <span className="font-extrabold text-lg">
@@ -590,13 +607,59 @@
                   )}
                 </div>
 
+                {/* Low Score Improvement Guide & Actionable Recommendations */}
+                {result.eligibilityResult.improvementGuide && (
+                  <div className="bg-slate-900 text-white p-6 rounded-2xl space-y-4 shadow-xl border border-slate-800">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <h4 className="font-extrabold text-sm text-amber-400 uppercase tracking-wide flex items-center gap-2">
+                        <span>💡 Score Improvement Guide & Actionable Recommendations</span>
+                      </h4>
+                      <span className="text-[10px] bg-amber-400/20 text-amber-300 px-2.5 py-1 rounded-full font-bold">Feedback System</span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                      {result.eligibilityResult.improvementGuide.summary}
+                    </p>
+
+                    {result.eligibilityResult.improvementGuide.actionableSteps && result.eligibilityResult.improvementGuide.actionableSteps.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-xs font-bold text-emerald-400">Targeted Actions to Achieve >80 Eligibility Score:</div>
+                        <ul className="space-y-1.5 text-xs text-slate-200">
+                          {result.eligibilityResult.improvementGuide.actionableSteps.map((step, i) => (
+                            <li key={i} className="flex items-start gap-2 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700">
+                              <span className="text-emerald-400 font-bold">🎯 Step {i+1}:</span>
+                              <span>{step}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {result.eligibilityResult.improvementGuide.suggestedSchemes && result.eligibilityResult.improvementGuide.suggestedSchemes.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t border-slate-800">
+                        <div className="text-xs font-bold text-blue-400">Recommended Government Support Schemes & Incubation Grants:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {result.eligibilityResult.improvementGuide.suggestedSchemes.map((scheme, i) => (
+                            <span key={i} className="text-[11px] bg-blue-900/60 border border-blue-700/60 text-blue-200 px-3 py-1.5 rounded-lg font-semibold">
+                              🏛️ {scheme}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Recommended Problem Statements */}
                 <div className="space-y-3 pt-4">
                   <h4 className="font-bold text-slate-900 text-sm">Recommended Government Problem Statements:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {result.recommendedProblemStatements.map((ps) => (
                       <div key={ps.id} className="bg-white border border-slate-200 p-4 rounded-xl space-y-2">
-                        <div className="text-xs font-bold text-blue-600">{ps.category}</div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-blue-600">{ps.category}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">Min {ps.minimumExperience} Yrs</span>
+                        </div>
                         <div className="font-bold text-slate-900 text-sm">{ps.title}</div>
                         <div className="text-xs text-slate-500">{ps.department}</div>
                         <a href="#/problem-statements" className="inline-block text-xs font-bold text-blue-600 mt-2">View & Apply →</a>
@@ -703,9 +766,22 @@
                   <p className="text-xs text-slate-600 leading-relaxed">{selectedPS.description}</p>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
-                  <h4 className="font-bold text-slate-800">Eligibility & Criteria</h4>
-                  <p className="text-slate-600">{selectedPS.eligibilityCriteria}</p>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs">
+                  <h4 className="font-bold text-slate-800 uppercase tracking-wide">Mandatory Procurement Thresholds</h4>
+                  <div className="grid grid-cols-3 gap-2 text-center font-bold">
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[10px] text-slate-400">MIN EXPERIENCE</div>
+                      <div className="text-sm text-blue-600 font-extrabold mt-0.5">{selectedPS.minimumExperience} Years</div>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[10px] text-slate-400">DPIIT STATUS</div>
+                      <div className="text-sm text-emerald-600 font-extrabold mt-0.5">{selectedPS.dpiitRequired ? 'Mandatory' : 'Optional'}</div>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[10px] text-slate-400">MIN TURNOVER</div>
+                      <div className="text-sm text-purple-600 font-extrabold mt-0.5">{selectedPS.minimumTurnover || '40 Lakhs'}</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex justify-between items-center pt-4">
@@ -860,22 +936,30 @@
           </div>
 
           {/* Overview Stat Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-white border border-slate-200 p-5 rounded-2xl">
               <div className="text-xs font-bold text-slate-500 uppercase">Total Applications</div>
               <div className="text-3xl font-extrabold text-slate-900 mt-1">{stats.totalApplicationsCount || 0}</div>
             </div>
             <div className="bg-white border border-slate-200 p-5 rounded-2xl">
-              <div className="text-xs font-bold text-emerald-600 uppercase">Eligible Startups</div>
-              <div className="text-3xl font-extrabold text-emerald-600 mt-1">{stats.eligibleCount || 0}</div>
-            </div>
-            <div className="bg-white border border-slate-200 p-5 rounded-2xl">
-              <div className="text-xs font-bold text-amber-600 uppercase">Shortlisted Resumes</div>
+              <div className="text-xs font-bold text-amber-600 uppercase">No. of Selected</div>
               <div className="text-3xl font-extrabold text-amber-600 mt-1">{stats.shortlistedCount || 0}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Shortlisted Candidates</div>
             </div>
             <div className="bg-white border border-slate-200 p-5 rounded-2xl">
+              <div className="text-xs font-bold text-rose-600 uppercase">No. of Not Eligible</div>
+              <div className="text-3xl font-extrabold text-rose-600 mt-1">{stats.rejectedCount || 0}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Filtered / Rejected</div>
+            </div>
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl">
+              <div className="text-xs font-bold text-emerald-600 uppercase">Eligible Applications</div>
+              <div className="text-3xl font-extrabold text-emerald-600 mt-1">{stats.eligibleCount || 0}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Qualified Startups</div>
+            </div>
+            <div className="bg-white border border-slate-200 p-5 rounded-2xl col-span-2 md:col-span-1">
               <div className="text-xs font-bold text-blue-600 uppercase">Active Problem Statements</div>
               <div className="text-3xl font-extrabold text-blue-600 mt-1">{problemStatements.length}</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Live Challenges</div>
             </div>
           </div>
 

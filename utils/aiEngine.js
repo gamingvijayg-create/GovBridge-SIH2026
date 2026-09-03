@@ -130,6 +130,7 @@ Evaluate if the startup meets standard procurement rules:
 Rules:
 - If experience < 3 years OR not DPIIT registered, set "isEligible": false, lower score (< 40), and state exact rejection reasons.
 - If all criteria met, set "isEligible": true, high score (80-100), and list matched government schemes.
+- Provide actionable improvement suggestions for low-scoring startups.
 
 Respond strictly in valid json format:
 {
@@ -137,7 +138,12 @@ Respond strictly in valid json format:
   "eligibilityScore": 30,
   "matchedSchemes": [],
   "rejectionReasons": ["Insufficient experience (found 1 year, required minimum 3 years)"],
-  "reasoning": "Clear explanation of scoring decision"
+  "reasoning": "Clear explanation of scoring decision",
+  "improvementGuide": {
+    "summary": "Short diagnosis of why score is low",
+    "actionableSteps": ["Step 1: Obtain DPIIT registration", "Step 2: Complete 2+ years of pilot operations"],
+    "suggestedSchemes": ["Startup India Seed Fund Scheme", "AIM NITI Aayog Grants"]
+  }
 }`
       },
       {
@@ -151,9 +157,49 @@ Respond strictly in valid json format:
 
   const eligibilityResult = parseJsonResponse(evalCompletion.choices[0]?.message?.content);
 
+  // Mismatch Detection between Register Form & Resume Text
+  const mismatchWarnings = [];
+  const resumeExp = extractedData.experience_years || 0;
+  if (startupMetadata.experienceYears !== undefined && resumeExp > 0 && Math.abs(expYears - resumeExp) >= 2) {
+    mismatchWarnings.push(`Experience Mismatch: Registered form states ${expYears} Years, but Resume text indicates ${resumeExp} Years.`);
+  }
+
+  const resumeSector = (extractedData.sector || '').toLowerCase();
+  const formSector = (sectorVal || '').toLowerCase();
+  if (formSector && resumeSector && !resumeSector.includes(formSector) && !formSector.includes(resumeSector) && resumeSector !== 'general tech') {
+    mismatchWarnings.push(`Sector Mismatch: Registered form states '${sectorVal}', but Resume text indicates '${extractedData.sector}'.`);
+  }
+
+  if (startupMetadata.dpiitRegistered === true && extractedData.dpiit_registered === false && documentText.toLowerCase().includes('not dpiit')) {
+    mismatchWarnings.push(`DPIIT Status Mismatch: Registered form claims DPIIT Recognition, but Resume text mentions non-registered status.`);
+  }
+
   // Generate Vector Embedding for Semantic Search
   const fullContent = `${sectorVal} ${extractedData.summary || ''} ${(extractedData.skills || []).join(' ')} ${documentText}`;
   const embedding = generateVectorEmbedding(fullContent);
+
+  const isEligible = eligibilityResult.isEligible === true;
+  const score = Number(eligibilityResult.eligibilityScore) || (isEligible ? 85 : 30);
+
+  // Default Improvement Guide if score is low
+  let improvementGuide = eligibilityResult.improvementGuide || null;
+  if (score < 75 || !isEligible) {
+    if (!improvementGuide) {
+      improvementGuide = {
+        summary: `Your current eligibility score is ${score}/100. Key procurement thresholds were not fully satisfied.`,
+        actionableSteps: [
+          expYears < 3 ? `Experience Upgrade: Increase operational experience to minimum 3 years (currently ${expYears} yrs).` : null,
+          !dpiitStatus ? "DPIIT Recognition: Register your entity on Startup India portal to unlock DPIIT exemption compliance." : null,
+          "Turnover Requirement: Meet minimum ₹40 Lakhs annual turnover or partner via Joint Venture."
+        ].filter(Boolean),
+        suggestedSchemes: [
+          "Startup India Seed Fund Scheme (SISFS)",
+          "Agri Infrastructure Fund / MeitY SAMRIDH Scheme",
+          "Government e-Marketplace (GeM) Startup Portal Onboarding"
+        ]
+      };
+    }
+  }
 
   return {
     extractedData: {
@@ -165,11 +211,14 @@ Respond strictly in valid json format:
       summary: extractedData.summary || ''
     },
     eligibilityResult: {
-      isEligible: eligibilityResult.isEligible === true,
-      eligibilityScore: Number(eligibilityResult.eligibilityScore) || (eligibilityResult.isEligible ? 85 : 30),
-      matchedSchemes: eligibilityResult.matchedSchemes || (eligibilityResult.isEligible ? ["Government e-Marketplace (GeM) Startup Scheme"] : []),
+      isEligible: isEligible,
+      eligibilityScore: score,
+      matchedSchemes: eligibilityResult.matchedSchemes || (isEligible ? ["Government e-Marketplace (GeM) Startup Scheme"] : []),
       rejectionReasons: eligibilityResult.rejectionReasons || [],
-      reasoning: eligibilityResult.reasoning || "Evaluation completed."
+      reasoning: eligibilityResult.reasoning || "Evaluation completed.",
+      mismatchWarnings: mismatchWarnings,
+      hasMismatch: mismatchWarnings.length > 0,
+      improvementGuide: improvementGuide
     },
     vectorEmbedding: embedding
   };

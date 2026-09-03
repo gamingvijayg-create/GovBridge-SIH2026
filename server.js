@@ -79,11 +79,11 @@ async function connectDatabase() {
     try {
       console.log('Connecting to MongoDB Atlas Cloud...');
       await mongoose.connect(cloudUri, { serverSelectionTimeoutMS: 3000 });
-      console.log('✅ Connected to MongoDB Atlas Cloud successfully!');
+      console.log('Connected to MongoDB Atlas Cloud successfully!');
       return;
     } catch (err) {
-      console.warn('⚠️ Atlas connection unavailable:', err.message);
-      console.log('🔄 Starting Local Embedded MongoDB Server for Desktop Compass...');
+      console.warn(' Atlas connection unavailable:', err.message);
+      console.log('Starting Local Embedded MongoDB Server for Desktop Compass...');
     }
   }
 
@@ -93,15 +93,15 @@ async function connectDatabase() {
     });
     const localUri = mongoServer.getUri();
     await mongoose.connect(localUri);
-    console.log('✅ Local MongoDB Database Server is Live!');
-    console.log('📌 Connect Desktop MongoDB Compass to: mongodb://127.0.0.1:27017/govbridge');
+    console.log(' Local MongoDB Database Server is Live!');
+    console.log(' Connect Desktop MongoDB Compass to: mongodb://127.0.0.1:27017/govbridge');
   } catch (localErr) {
     try {
       const mongoServer = await MongoMemoryServer.create({ instance: { dbName: 'govbridge' } });
       const localUri = mongoServer.getUri();
       await mongoose.connect(localUri);
-      console.log('✅ Local MongoDB Database Server is Live!');
-      console.log(`📌 Connect Desktop MongoDB Compass to: ${localUri}`);
+      console.log(' Local MongoDB Database Server is Live!');
+      console.log(` Connect Desktop MongoDB Compass to: ${localUri}`);
     } catch (e) {
       console.error('Local DB Initialization Error:', e.message);
     }
@@ -112,5 +112,5 @@ connectDatabase();
 
 // Start HTTP server
 app.listen(PORT, () => {
-  console.log(`🚀 GovBridge Server running on port ${PORT}`);
+  console.log(` GovBridge Server running on port ${PORT}`);
 });
