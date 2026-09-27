@@ -1,7 +1,13 @@
 const Groq = require('groq-sdk');
 
 const getGroqClient = () => {
-  const apiKey = process.env.GROQ_API_KEY;
+  let apiKey = process.env.GROQ_API_KEY || process.env.GROQ_KEY || process.env.GROQAPIKEY;
+  if (apiKey) {
+    apiKey = apiKey.trim().replace(/^["']|["']$/g, '');
+  }
+
+  console.log(`[GROQ API DEBUG] Key detected: ${apiKey ? 'YES' : 'NO'} | Key Name: GROQ_API_KEY | Length: ${apiKey ? apiKey.length : 0}`);
+
   if (!apiKey) {
     throw new Error('GROQ_API_KEY environment variable is not configured');
   }
@@ -15,10 +21,10 @@ const parseJsonResponse = (content) => {
 };
 
 const PREFERRED_MODELS = [
-  'qwen/qwen3.6-27b',
-  'groq/compound-mini',
-  'groq/compound',
-  'openai/gpt-oss-20b'
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'mixtral-8x7b-32768',
+  'gemma2-9b-it'
 ];
 
 const createCompletionWithFallback = async (groq, payload) => {
@@ -273,6 +279,7 @@ Respond strictly in valid json format:
 module.exports = {
   getGroqClient,
   parseJsonResponse,
+  createCompletionWithFallback,
   generateVectorEmbedding,
   calculateCosineSimilarity,
   evaluateStartupApplication

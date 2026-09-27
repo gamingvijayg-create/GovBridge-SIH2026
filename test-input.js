@@ -1,20 +1,23 @@
 require('dotenv').config();
 const Groq = require('groq-sdk');
 
-const apiKey = process.env.GROQ_API_KEY;
+let apiKey = process.env.GROQ_API_KEY || process.env.GROQ_KEY || process.env.GROQAPIKEY;
+if (apiKey) {
+  apiKey = apiKey.trim().replace(/^["']|["']$/g, '');
+}
+
 if (!apiKey) {
-  console.error('Error: GROQ_API_KEY is missing in your .env file.');
+  console.error('Error: GROQ_API_KEY is missing in environment variables or .env file.');
   process.exit(1);
 }
 
 const groq = new Groq({ apiKey });
 
 const PREFERRED_MODELS = [
-  'qwen/qwen3.6-27b',
-  'groq/compound-mini',
-  'groq/compound',
-  'openai/gpt-oss-20b',
-  'llama-3.3-70b-versatile'
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'mixtral-8x7b-32768',
+  'gemma2-9b-it'
 ];
 
 async function createCompletionWithFallback(payload) {

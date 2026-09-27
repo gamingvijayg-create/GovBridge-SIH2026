@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const Groq = require('groq-sdk');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const Startup = require('../models/Startup');
+const { getGroqClient, parseJsonResponse, createCompletionWithFallback } = require('../utils/aiEngine');
 
 const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
 
@@ -12,50 +12,6 @@ let globalStats = {
   totalAnalyzed: 0,
   selected: 0,
   rejected: 0
-};
-
-// Helper to safely get Groq SDK instance
-const getGroqClient = () => {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new Error('GROQ_API_KEY is not configured in environment variables');
-  }
-  return new Groq({ apiKey });
-};
-
-// Helper function to safely extract and parse JSON from LLM output
-const parseJsonResponse = (content) => {
-  if (!content) return {};
-  const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-  return JSON.parse(cleaned);
-};
-
-// Available candidate models in order of preference
-const PREFERRED_MODELS = [
-  'qwen/qwen3.6-27b',
-  'groq/compound-mini',
-  'groq/compound',
-  'openai/gpt-oss-20b'
-];
-
-// Helper to execute completions with fallback models
-const createCompletionWithFallback = async (groq, payload) => {
-  let lastError;
-  for (const model of PREFERRED_MODELS) {
-    try {
-      const completion = await groq.chat.completions.create({
-        max_tokens: 1024,
-        ...payload,
-        model
-      });
-      return completion;
-    } catch (err) {
-      lastError = err;
-      console.warn(`Model ${model} failed (${err?.status || err?.message}), attempting fallback...`);
-      continue;
-    }
-  }
-  throw lastError;
 };
 
 // GET /api/extraction/stats - Fetch current counts (Total, Selected, Rejected)
