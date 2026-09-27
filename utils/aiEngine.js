@@ -21,10 +21,10 @@ const parseJsonResponse = (content) => {
 };
 
 const PREFERRED_MODELS = [
-  'llama-3.3-70b-versatile',
-  'llama-3.1-8b-instant',
-  'mixtral-8x7b-32768',
-  'gemma2-9b-it'
+  'qwen/qwen3.8-27b',
+  'openai/gpt-oss-120b',
+  'openai/gpt-oss-20b',
+  'allam-2-7b'
 ];
 
 const createCompletionWithFallback = async (groq, payload) => {
@@ -42,6 +42,29 @@ const createCompletionWithFallback = async (groq, payload) => {
       continue;
     }
   }
+
+  // Dynamic fallback: Query active chat models live from Groq API if static models fail
+  try {
+    const list = await groq.models.list();
+    const activeModels = list.data
+      .map(m => m.id)
+      .filter(id => !id.includes('whisper') && !id.includes('guard'));
+    for (const model of activeModels) {
+      try {
+        return await groq.chat.completions.create({
+          max_tokens: 1024,
+          ...payload,
+          model
+        });
+      } catch (err) {
+        lastError = err;
+        continue;
+      }
+    }
+  } catch (dynamicErr) {
+    // Fallthrough to throw lastError
+  }
+
   throw lastError;
 };
 
