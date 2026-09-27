@@ -1,0 +1,25 @@
+{
+  "user": "66d9ab12e4b0123456789a01",
+  "startupName": "AgriTech AI Labs",
+  "dpiitNumber": "DPIIT123456",
+  "yearsOfExperience": 4,
+  "annualTurnover": "50 Lakhs",
+  "skills": [
+    "IoT Sensors",
+    "Machine Learning",
+    "Agronomy Data",
+    "Satellite Imagery"
+  ],
+  "extractedSkills": [
+    "IoT Sensors",
+    "Machine Learning",
+    "Agronomy Data"
+  ],
+  "vectorEmbedding": [
+    0.012,
+    -0.045,
+    0.892,
+    0.123,
+    -0.456
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "header": {
+    "alg": "HS256",
+    "typ": "JWT"
+  },
+  "payload": {
+    "id": "66d9ab12e4b0123456789b02",
+    "role": "admin",
+    "email": "admin@govbridge.gov.in",
+    "iat": 1788593963,
+    "exp": 1789198763
+  },
+  "secret_key": "govbridge_secret_2026",
+  "usage_instruction": "Copy adminToken from 02_jwt_admin_token.txt into https://jwt.io"
+}

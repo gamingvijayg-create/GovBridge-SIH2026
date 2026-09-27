@@ -92,11 +92,12 @@
             </a>
 
             {/* Nav Items */}
-            <nav className="hidden md:flex items-center gap-8 font-semibold text-sm text-slate-700">
+            <nav className="hidden md:flex items-center gap-6 font-semibold text-sm text-slate-700">
               <a href="#/" className={`hover:text-blue-600 transition ${currentPath==='/'?'text-blue-600 font-bold border-b-2 border-blue-600 py-6':''}`}>Home</a>
               <a href="#/problem-statements" className={`hover:text-blue-600 transition ${currentPath==='/problem-statements'?'text-blue-600 font-bold border-b-2 border-blue-600 py-6':''}`}>Problem Statements</a>
+              <a href="#/pilots" className={`hover:text-blue-600 transition ${currentPath==='/pilots'?'text-blue-600 font-bold border-b-2 border-blue-600 py-6':''}`}>🧪 Sandbox & Milestones</a>
               <a href="#/startup/register" className={`hover:text-blue-600 transition ${currentPath==='/startup/register'?'text-blue-600 font-bold border-b-2 border-blue-600 py-6':''}`}>Startups</a>
-              <a href="#/#how-it-works" className="hover:text-blue-600 transition">How It Works</a>
+              <a href="#/how-it-works" className={`hover:text-blue-600 transition ${currentPath==='/how-it-works'?'text-blue-600 font-bold border-b-2 border-blue-600 py-6':''}`}>How It Works</a>
               {user && user.role === 'admin' && (
                 <a href="#/admin/dashboard" className={`text-amber-700 font-bold hover:text-amber-800 transition ${currentPath==='/admin/dashboard'?'border-b-2 border-amber-600 py-6':''}`}>👑 Admin Dashboard</a>
               )}
@@ -153,8 +154,11 @@
                   <a href="#/problem-statements" className="inline-flex items-center gap-2 px-7 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 transition transform hover:-translate-y-0.5">
                     Explore Problem Statements <span>→</span>
                   </a>
+                  <a href="#/pilots" className="inline-flex items-center gap-2 px-7 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition transform hover:-translate-y-0.5">
+                    🧪 Sandbox & Milestones
+                  </a>
                   <a href="#/startup/register" className="inline-flex items-center gap-2 px-7 py-3.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold rounded-xl transition">
-                    Register as Startup <span>🚀</span>
+                    Register Startup <span>🚀</span>
                   </a>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 pt-2">
@@ -336,6 +340,12 @@
                 <h4 className="font-bold text-slate-900 text-sm">5. Procure & Scale</h4>
                 <p className="text-xs text-slate-500">Procure successful solutions and scale the impact</p>
               </div>
+            </div>
+
+            <div className="text-center pt-4">
+              <a href="#/how-it-works" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+                📊 Explore Full 11-Stage Interactive Visual Flowchart →
+              </a>
             </div>
           </section>
         </div>
@@ -1188,6 +1198,1001 @@
     }
 
     // ==========================================
+    // PILOT, CONTRACT, PERFORMANCE & SCALE GATE PAGE
+    // (End-To-End Lifecycle Matching Reference Diagrams)
+    // ==========================================
+    function PilotLifecyclePage({ user }) {
+      const [pilots, setPilots] = useState([]);
+      const [selectedPilot, setSelectedPilot] = useState(null);
+      const [activeTab, setActiveTab] = useState('sandbox'); // 'sandbox', 'contract', 'performance', 'payment', 'scale_gate'
+      const [loading, setLoading] = useState(true);
+
+      // Forms state
+      const [evidenceNotes, setEvidenceNotes] = useState('');
+      const [evidenceUrl, setEvidenceUrl] = useState('');
+      const [activeMilestoneModal, setActiveMilestoneModal] = useState(null);
+      const [scaleDecision, setScaleDecision] = useState('Scale');
+      const [scaleJustification, setScaleJustification] = useState('');
+
+      const fetchPilots = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch('/api/pilots');
+          const json = await res.json();
+          if (json.success && json.data) {
+            setPilots(json.data);
+            if (json.data.length > 0 && !selectedPilot) {
+              setSelectedPilot(json.data[0]);
+            } else if (selectedPilot) {
+              const updated = json.data.find(p => p._id === selectedPilot._id);
+              if (updated) setSelectedPilot(updated);
+            }
+          }
+        } catch(err) {
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        fetchPilots();
+      }, []);
+
+      const handleRequestPayment = async (milestoneId) => {
+        if (!selectedPilot) return;
+        try {
+          const res = await fetch(`/api/pilots/${selectedPilot._id}/milestones/${milestoneId}/request-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ evidenceNotes, evidenceUrl })
+          });
+          const json = await res.json();
+          if (json.success) {
+            alert('✅ Payment Request submitted to Department Admin!');
+            setActiveMilestoneModal(null);
+            setEvidenceNotes('');
+            setEvidenceUrl('');
+            fetchPilots();
+          } else {
+            alert('Error: ' + json.error);
+          }
+        } catch(err) { alert(err.message); }
+      };
+
+      const handleApprovePayment = async (milestoneId) => {
+        if (!selectedPilot) return;
+        try {
+          const res = await fetch(`/api/pilots/${selectedPilot._id}/milestones/${milestoneId}/approve-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const json = await res.json();
+          if (json.success) {
+            alert('🎉 Milestone Payment Approved & Funds Disbursed!');
+            fetchPilots();
+          } else {
+            alert('Error: ' + json.error);
+          }
+        } catch(err) { alert(err.message); }
+      };
+
+      const handleScaleDecisionSubmit = async () => {
+        if (!selectedPilot) return;
+        try {
+          const res = await fetch(`/api/pilots/${selectedPilot._id}/scale-up-decision`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              decision: scaleDecision,
+              justification: scaleJustification,
+              validatorNotes: 'Independent Committee Audit completed.'
+            })
+          });
+          const json = await res.json();
+          if (json.success) {
+            alert(`🚀 Scale-Up Gate Decision recorded: ${scaleDecision}!`);
+            fetchPilots();
+          } else {
+            alert('Error: ' + json.error);
+          }
+        } catch(err) { alert(err.message); }
+      };
+
+      if (loading) {
+        return (
+          <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+            <div className="text-xl font-bold text-slate-700 animate-pulse">Loading Pilot & Milestone Data...</div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+          
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30 uppercase tracking-widest">
+                  SIH 2026 End-to-End Lifecycle
+                </span>
+                <span className="text-xs text-slate-400">GovBridge NextGen Architecture</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                Pilot, Contract, Performance & Scale Gate Manager
+              </h1>
+              <p className="text-slate-300 max-w-3xl text-sm leading-relaxed">
+                GovBridge captures structural lifecycle evidence at every stage: from outcome specifications and KPI baseline tracking, to milestone-linked payments and compliant scale-up tender transition.
+              </p>
+            </div>
+          </div>
+
+          {/* End-to-End Lifecycle Stepper Visualizer (Matching Slide 2 & 3) */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">End-to-End Lifecycle Pathway</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 text-center text-xs font-bold">
+              {[
+                { step: '1', title: 'Gov Need', active: true },
+                { step: '2', title: 'Startup Match', active: true },
+                { step: '3', title: 'Eligibility', active: true },
+                { step: '4', title: 'Expert Eval', active: true },
+                { step: '5', title: 'Pilot / Sandbox', active: activeTab === 'sandbox' },
+                { step: '6', title: 'Milestone Contract', active: activeTab === 'contract' },
+                { step: '7', title: 'KPI Tracker', active: activeTab === 'performance' },
+                { step: '8', title: 'Payment Gate', active: activeTab === 'payment' },
+              ].map((s, idx) => (
+                <div key={idx} className={`p-3 rounded-xl border ${s.active ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                  <div className="text-[10px] text-slate-400 font-semibold">Stage {s.step}</div>
+                  <div className="truncate mt-0.5">{s.title}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Active Pilot Selector Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-100 p-4 rounded-2xl border border-slate-200">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🧪</span>
+              <div>
+                <div className="text-xs text-slate-500 font-bold uppercase">Active Pilot Specification</div>
+                <select 
+                  className="font-bold text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-300 text-sm outline-none focus:border-blue-600"
+                  value={selectedPilot ? selectedPilot._id : ''}
+                  onChange={(e) => {
+                    const found = pilots.find(p => p._id === e.target.value);
+                    if (found) setSelectedPilot(found);
+                  }}
+                >
+                  {pilots.map(p => (
+                    <option key={p._id} value={p._id}>
+                      {p.startupName} — {p.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {selectedPilot && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-600">Status:</span>
+                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                  {selectedPilot.status.replace('_', ' ')}
+                </span>
+                {selectedPilot.scaleUpDecision && selectedPilot.scaleUpDecision.decision !== 'Pending' && (
+                  <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    Decision: {selectedPilot.scaleUpDecision.decision}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {selectedPilot && (
+            <div className="space-y-8">
+              {/* Tab Navigation Controls */}
+              <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                {[
+                  { id: 'sandbox', label: '🧪 Pilot / Sandbox Spec', icon: '⚡' },
+                  { id: 'contract', label: '📋 Milestone Contract', icon: '📝' },
+                  { id: 'performance', label: '📈 Performance & KPI Record', icon: '📊' },
+                  { id: 'payment', label: '💳 Milestone Payment Request', icon: '💰' },
+                  { id: 'scale_gate', label: '🚀 Scale-Up Decision Gate', icon: '🏆' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 ${
+                      activeTab === tab.id
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{tab.icon}</span> {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* TAB 1: PILOT / SANDBOX SPECIFICATION */}
+              {activeTab === 'sandbox' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">🧪 Pilot / Sandbox Specification</h2>
+                      <p className="text-xs text-slate-500">Detailed SOW, outcome metrics, IP terms & compliance baseline</p>
+                    </div>
+                    <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">
+                      Duration: {selectedPilot.durationMonths} Months
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        <span>🎯</span> Outcome Objective
+                      </div>
+                      <p className="text-slate-600 leading-relaxed">{selectedPilot.outcomeObjective || 'Not specified'}</p>
+                    </div>
+
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        <span>📊</span> Baseline + Target KPIs
+                      </div>
+                      <p className="text-slate-600 leading-relaxed">{selectedPilot.baselineTargetKPIs || 'Not specified'}</p>
+                    </div>
+
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        <span>📍</span> Pilot Scope & Geographic Location
+                      </div>
+                      <p className="text-slate-600 leading-relaxed">{selectedPilot.scope || 'Not specified'}</p>
+                    </div>
+
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        <span>✅</span> Acceptance Criteria
+                      </div>
+                      <p className="text-slate-600 leading-relaxed">{selectedPilot.acceptanceCriteria || 'Not specified'}</p>
+                    </div>
+
+                    <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 space-y-3">
+                      <div className="font-bold text-blue-900 text-sm flex items-center gap-2">
+                        <span>🔒</span> Cybersecurity Controls
+                      </div>
+                      <p className="text-slate-700 leading-relaxed">{selectedPilot.cybersecurityControls}</p>
+                    </div>
+
+                    <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 space-y-3">
+                      <div className="font-bold text-blue-900 text-sm flex items-center gap-2">
+                        <span>📁</span> Sovereign Data Handling
+                      </div>
+                      <p className="text-slate-700 leading-relaxed">{selectedPilot.dataHandling}</p>
+                    </div>
+
+                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 space-y-3">
+                      <div className="font-bold text-indigo-900 text-sm flex items-center gap-2">
+                        <span>📜</span> IP Ownership & Usage Terms
+                      </div>
+                      <p className="text-slate-700 leading-relaxed">{selectedPilot.ipOwnership}</p>
+                    </div>
+
+                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 space-y-3">
+                      <div className="font-bold text-indigo-900 text-sm flex items-center gap-2">
+                        <span>🔎</span> Independent Validation Plan
+                      </div>
+                      <p className="text-slate-700 leading-relaxed">{selectedPilot.validationPlan}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: MILESTONE CONTRACT */}
+              {activeTab === 'contract' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-4">
+                    <h2 className="text-xl font-bold text-slate-900">📋 Milestone Contract Structure</h2>
+                    <p className="text-xs text-slate-500">Verifiable stage-gate contract linked directly to payment milestones</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {selectedPilot.milestones.map((ms, idx) => (
+                      <div key={ms._id || idx} className="bg-slate-50 rounded-2xl p-6 border border-slate-200 space-y-4 flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-extrabold text-blue-600 bg-blue-100 px-3 py-1 rounded-lg text-xs">
+                              {ms.milestoneCode}
+                            </span>
+                            <span className="text-[11px] font-semibold text-slate-500">{ms.dueDate}</span>
+                          </div>
+                          <h4 className="font-bold text-slate-900 text-sm leading-snug">{ms.title}</h4>
+                          <p className="text-xs text-slate-600">{ms.description}</p>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-200 space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-semibold">Payment Value:</span>
+                            <span className="font-bold text-emerald-700">₹{(ms.amount / 100000).toFixed(1)} Lakhs</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-semibold">Gate Status:</span>
+                            <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
+                              ms.verificationStatus === 'Verified' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {ms.verificationStatus}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: PERFORMANCE RECORD */}
+              {activeTab === 'performance' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-4">
+                    <h2 className="text-xl font-bold text-slate-900">📈 Performance & KPI Record (per milestone)</h2>
+                    <p className="text-xs text-slate-500">Live baseline vs target vs actual measured result comparison</p>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
+                          <th className="p-3.5">Code</th>
+                          <th className="p-3.5">Milestone Name</th>
+                          <th className="p-3.5">Baseline Metric</th>
+                          <th className="p-3.5">Target Goal</th>
+                          <th className="p-3.5">Actual Measured Result</th>
+                          <th className="p-3.5">Status</th>
+                          <th className="p-3.5">Evidence Submitted</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-700">
+                        {selectedPilot.milestones.map((ms, idx) => (
+                          <tr key={ms._id || idx} className="hover:bg-slate-50">
+                            <td className="p-3.5 font-bold text-blue-600">{ms.milestoneCode}</td>
+                            <td className="p-3.5 font-bold text-slate-900">{ms.title}</td>
+                            <td className="p-3.5 text-slate-500">{ms.baselineMetric || 'N/A'}</td>
+                            <td className="p-3.5 font-semibold text-blue-700">{ms.targetMetric || 'N/A'}</td>
+                            <td className="p-3.5 font-extrabold text-emerald-600">{ms.actualMetric || 'Pending measurement'}</td>
+                            <td className="p-3.5">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                ms.verificationStatus === 'Verified' ? 'bg-emerald-100 text-emerald-800' :
+                                ms.verificationStatus === 'Disputed' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {ms.verificationStatus}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-slate-600 max-w-xs truncate">{ms.evidenceNotes || 'No notes attached'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: MILESTONE PAYMENT REQUEST */}
+              {activeTab === 'payment' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-4">
+                    <h2 className="text-xl font-bold text-slate-900">💳 Milestone Payment Requests</h2>
+                    <p className="text-xs text-slate-500">Transparent payment release workflow linked to verified evidence</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {selectedPilot.milestones.map((ms, idx) => (
+                      <div key={ms._id || idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-blue-600 bg-blue-100 px-2.5 py-0.5 rounded">{ms.milestoneCode}</span>
+                            <h4 className="font-bold text-slate-900 text-sm">{ms.title}</h4>
+                          </div>
+                          <p className="text-xs text-slate-600">Amount: <b>₹{(ms.amount / 100000).toFixed(1)} Lakhs</b> | Due: <b>{ms.dueDate}</b></p>
+                          {ms.evidenceNotes && (
+                            <div className="text-[11px] text-slate-500 bg-white p-2 rounded border border-slate-200 mt-2">
+                              <b>Evidence Proof:</b> {ms.evidenceNotes}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            ms.paymentStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                            ms.paymentStatus === 'Requested' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                            'bg-slate-200 text-slate-700'
+                          }`}>
+                            Payment: {ms.paymentStatus}
+                          </span>
+
+                          {ms.paymentStatus === 'Unpaid' && (
+                            <button
+                              onClick={() => setActiveMilestoneModal(ms)}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm"
+                            >
+                              Submit Payment Request →
+                            </button>
+                          )}
+
+                          {ms.paymentStatus === 'Requested' && (
+                            <button
+                              onClick={() => handleApprovePayment(ms._id)}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm"
+                            >
+                              👑 Admin: Approve & Disburse
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: SCALE-UP DECISION GATE */}
+              {activeTab === 'scale_gate' && (
+                <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                  <div className="border-b border-slate-100 pb-4">
+                    <h2 className="text-xl font-bold text-slate-900">🚀 Scale-Up Decision Gate</h2>
+                    <p className="text-xs text-slate-500">Final independent validation decision for transitioning pilot into compliant GeM tender</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {[
+                      { id: 'Scale', label: '✅ Scale Up', desc: 'KPIs met, evidence validated -> Direct Procurement Tender Bridge', color: 'border-emerald-500 bg-emerald-50 text-emerald-900' },
+                      { id: 'Extend', label: '🔄 Extend Pilot', desc: 'Partial success, adjust scope and timeline', color: 'border-amber-500 bg-amber-50 text-amber-900' },
+                      { id: 'Redesign', label: '🛠️ Redesign', desc: 'Re-evaluate baseline specifications & technical architecture', color: 'border-blue-500 bg-blue-50 text-blue-900' },
+                      { id: 'Stop', label: '🛑 Terminate', desc: 'Unsuccessful metrics, end pilot engagement', color: 'border-rose-500 bg-rose-50 text-rose-900' }
+                    ].map(opt => (
+                      <div 
+                        key={opt.id}
+                        onClick={() => setScaleDecision(opt.id)}
+                        className={`p-5 rounded-2xl border-2 cursor-pointer transition space-y-2 ${
+                          scaleDecision === opt.id ? opt.color + ' shadow-md' : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <h4 className="font-extrabold text-sm">{opt.label}</h4>
+                        <p className="text-[11px] leading-relaxed opacity-90">{opt.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase">Committee Justification & Audit Notes</h4>
+                    <textarea
+                      className="w-full p-3 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-600"
+                      rows="3"
+                      value={scaleJustification}
+                      onChange={(e) => setScaleJustification(e.target.value)}
+                      placeholder="Enter details of independent committee review, STQC report summary, and tender authorization notes..."
+                    ></textarea>
+
+                    <button
+                      onClick={handleScaleDecisionSubmit}
+                      className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition"
+                    >
+                      🏆 Submit Final Scale-Up Decision Gate Result
+                    </button>
+                  </div>
+
+                  {selectedPilot.scaleUpDecision && selectedPilot.scaleUpDecision.decision !== 'Pending' && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 space-y-2">
+                      <div className="text-xs font-bold text-emerald-800">Recorded Gate Decision:</div>
+                      <div className="text-lg font-extrabold text-emerald-900">{selectedPilot.scaleUpDecision.decision}</div>
+                      <div className="text-xs text-emerald-700"><b>GeM Tender Bridge Status:</b> {selectedPilot.scaleUpDecision.gemTenderBridgeStatus}</div>
+                      <div className="text-xs text-emerald-700"><b>Justification:</b> {selectedPilot.scaleUpDecision.justification}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Payment Request Evidence Modal */}
+          {activeMilestoneModal && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-8 max-w-lg w-full space-y-6 relative">
+                <button onClick={()=>setActiveMilestoneModal(null)} className="absolute top-6 right-6 font-bold text-slate-400">✕</button>
+                <h3 className="text-lg font-bold text-slate-900">Request Payment: {activeMilestoneModal.title}</h3>
+                
+                <div className="text-xs space-y-3">
+                  <div>
+                    <label className="font-semibold text-slate-700">Evidence Proof Notes / Demo Link</label>
+                    <textarea 
+                      className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-600"
+                      rows="3"
+                      value={evidenceNotes}
+                      onChange={e=>setEvidenceNotes(e.target.value)}
+                      placeholder="Describe KPI evidence achieved, test reports, live URL demo link..."
+                    ></textarea>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700">Evidence File URL (Optional)</label>
+                    <input 
+                      type="text" 
+                      className="w-full mt-1 p-3 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-600"
+                      value={evidenceUrl}
+                      onChange={e=>setEvidenceUrl(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-2">
+                  <button onClick={()=>handleRequestPayment(activeMilestoneModal._id)} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md">
+                    Submit Payment Package
+                  </button>
+                  <button onClick={()=>setActiveMilestoneModal(null)} className="px-5 py-3 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==========================================
+    // HOW IT WORKS — INTERACTIVE VISUAL FLOWCHART
+    // (Matching End-to-End Lifecycle Presentation Diagrams)
+    // ==========================================
+    function HowItWorksPage() {
+      const [selectedStep, setSelectedStep] = useState(null);
+      const [perspective, setPerspective] = useState('all'); // 'all', 'gov', 'startup'
+
+      const lifecycleSteps = [
+        {
+          id: 1,
+          code: 'Stage 1',
+          title: 'Government Problem',
+          icon: '🏛️',
+          category: 'gov',
+          summary: 'Departments frame outcome-based problem statements with clear target KPIs.',
+          details: {
+            actor: 'Government Department',
+            inputs: 'Department operational pain-point & expected outcome metrics',
+            outputs: 'Published Public Opportunity Notice with eligibility rules',
+            compliance: 'GFR Rule 194 & Innovation Procurement Pathway guidelines',
+            dataCaptured: 'Required skills vector, turnover baseline, experience cutoff, deadline'
+          }
+        },
+        {
+          id: 2,
+          code: 'Stage 2',
+          title: 'Startup Discovery',
+          icon: '🔍',
+          category: 'startup',
+          summary: 'AI Vector Search matches eligible startups with relevant government challenges.',
+          details: {
+            actor: 'Startup / Groq AI Matching Engine',
+            inputs: 'Startup profile, DPIIT registration, domain resumes, technical tags',
+            outputs: 'Cosine similarity vector score & automated recommendation list',
+            compliance: 'Startup India & DPIIT recognition validation',
+            dataCaptured: 'Vector embeddings, domain confidence scores, resume text'
+          }
+        },
+        {
+          id: 3,
+          code: 'Stage 3',
+          title: 'Eligibility Screening',
+          icon: '✅',
+          category: 'all',
+          summary: 'Automated rule engine checks DPIIT status, turnover, and experience thresholds.',
+          details: {
+            actor: 'GovBridge Rule Engine',
+            inputs: 'DPIIT registration number, turnover certificate, past project years',
+            outputs: 'Eligibility status badge (Eligible / Exempted under GeM startup relaxation)',
+            compliance: 'GeM Startup Exemption & DPIIT Gazetted criteria',
+            dataCaptured: 'Turnover proof, DPIIT verification status, score calculations'
+          }
+        },
+        {
+          id: 4,
+          code: 'Stage 4',
+          title: 'Expert Evaluation',
+          icon: '👨‍⚖️',
+          category: 'gov',
+          summary: 'Independent evaluation panel reviews shortlisted startup capability proposals.',
+          details: {
+            actor: 'Independent Evaluation Committee',
+            inputs: 'Anonymized technical proposals & prototype demonstration logs',
+            outputs: 'Evaluator scorecards & approved pilot candidate shortlist',
+            compliance: 'Conflict-screened impartial review standards',
+            dataCaptured: 'Individual committee scores, admin feedback notes, rank matrix'
+          }
+        },
+        {
+          id: 5,
+          code: 'Stage 5',
+          title: 'Pilot / Sandbox Specification',
+          icon: '🧪',
+          category: 'all',
+          summary: 'Safe testing environment defined with baseline KPIs, IP ownership, and data controls.',
+          details: {
+            actor: 'Department Admin & Shortlisted Startup',
+            inputs: 'Outcome objectives, scope, duration, cybersecurity baseline',
+            outputs: 'Signed Pilot Statement of Work (SOW) & Sandbox environment token',
+            compliance: 'CERT-In / STQC security guidelines & MeitY Sovereign Data Cloud terms',
+            dataCaptured: 'IP ownership split, zero-trust controls, risk management plan'
+          }
+        },
+        {
+          id: 6,
+          code: 'Stage 6',
+          title: 'Milestone Contract',
+          icon: '📋',
+          category: 'all',
+          summary: 'Verifiable stage-gate contract created (M1: Pilot Ready, M2: Evidence Achieved, M3: Payment Gate, Final Gate).',
+          details: {
+            actor: 'Department Procurement Officer',
+            inputs: 'Pilot scope broken down into measurable, payment-linked milestones',
+            outputs: 'Legally binding digital milestone contract',
+            compliance: 'Outcome-based milestone disbursement compliance',
+            dataCaptured: 'Due dates, milestone payment amounts (₹ Lakhs), target metrics'
+          }
+        },
+        {
+          id: 7,
+          code: 'Stage 7',
+          title: 'Performance & KPI Tracking',
+          icon: '📈',
+          category: 'all',
+          summary: 'Real-time monitoring of Baseline vs Target vs Actual measured results.',
+          details: {
+            actor: 'Startup Engineering Team & Department Inspector',
+            inputs: 'Field test telemetry, system logs, survey results, demo videos',
+            outputs: 'Live performance audit table & milestone verification status',
+            compliance: 'ISO/IEC 25010 Software Quality & Metric Standards',
+            dataCaptured: 'Baseline metric, actual achieved metric, logged deviations/blockers'
+          }
+        },
+        {
+          id: 8,
+          code: 'Stage 8',
+          title: 'Milestone Payment Request',
+          icon: '💳',
+          category: 'all',
+          summary: 'Startup submits evidence achieved package for automated payment approval.',
+          details: {
+            actor: 'Startup Founder & Department Accounts Admin',
+            inputs: 'Milestone completion proof, test report, demo link',
+            outputs: 'Approved invoice package & direct bank/treasury disbursement',
+            compliance: 'Public Financial Management System (PFMS) audit trail',
+            dataCaptured: 'Payment request timestamp, approval stamp, disbursed amount'
+          }
+        },
+        {
+          id: 9,
+          code: 'Stage 9',
+          title: 'Independent Validation',
+          icon: '🔎',
+          category: 'gov',
+          summary: '3rd Party audit committee verifies final pilot impact and system stability.',
+          details: {
+            actor: 'STQC / ICAR / NHA Independent Validator Panel',
+            inputs: 'Complete pilot logs, security audit certificates, end-user feedback',
+            outputs: 'Independent Validation Compliance Report',
+            compliance: 'Third-party unbiased audit verification',
+            dataCaptured: 'Audit certificate, final recommendation score, security sign-off'
+          }
+        },
+        {
+          id: 10,
+          code: 'Stage 10',
+          title: 'Procurement Transition',
+          icon: '📝',
+          category: 'gov',
+          summary: 'Successful pilot converts into a compliant direct procurement tender.',
+          details: {
+            actor: 'Central/State Procurement Authority',
+            inputs: 'Validated pilot results & STQC clearance',
+            outputs: 'Standardized Tender Specification & Direct GeM Portal Bridge',
+            compliance: 'GeM Single Source / Proprietary & Special Tender Relaxation Rules',
+            dataCaptured: 'Tender specification draft, budget allocation approval'
+          }
+        },
+        {
+          id: 11,
+          code: 'Stage 11',
+          title: 'Scale-Up Decision Gate',
+          icon: '🚀',
+          category: 'all',
+          summary: 'Full-scale rollout authorized across state/national government departments.',
+          details: {
+            actor: 'Government Evaluation Board',
+            inputs: 'Scale-Up Gate decision matrix (Scale / Extend / Redesign / Stop)',
+            outputs: 'National Scale-Up Contract & GeM Direct Order',
+            compliance: 'National Innovation Procurement Scale Policy',
+            dataCaptured: 'Scale decision status, GeM tender link, multi-district rollout plan'
+          }
+        }
+      ];
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+          
+          {/* Hero Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-950 rounded-3xl p-8 sm:p-10 text-white shadow-2xl relative overflow-hidden space-y-6">
+            <div className="relative z-10 space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="bg-amber-500/20 text-amber-300 text-xs font-bold px-3 py-1 rounded-full border border-amber-500/30 uppercase tracking-widest">
+                  SIH 2026 Architectural Visualizer
+                </span>
+                <span className="text-xs text-slate-300">GovBridge End-to-End Pathway</span>
+              </div>
+              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
+                How <span className="text-emerald-400">GovBridge</span> Works
+              </h1>
+              <p className="text-slate-300 max-w-3xl text-sm sm:text-base leading-relaxed">
+                An end-to-end innovation procurement pathway connecting Indian Government Departments with Startup Solutions — from problem posting to pilot sandboxing, milestone payments, and GeM scale-up.
+              </p>
+            </div>
+
+            {/* Role Filter Selector */}
+            <div className="relative z-10 pt-2 flex flex-wrap items-center gap-3">
+              <span className="text-xs font-bold text-slate-300">Filter Flow Perspective:</span>
+              {[
+                { id: 'all', label: '🌐 Full End-to-End System' },
+                { id: 'gov', label: '🏛️ Government Department Perspective' },
+                { id: 'startup', label: '🚀 Startup Founder Perspective' }
+              ].map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setPerspective(p.id)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                    perspective === p.id 
+                      ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20' 
+                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Slide 1 Gaps vs GovBridge Solution Comparison Banner */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-rose-50/70 border border-rose-200 rounded-3xl p-6 space-y-3">
+              <div className="flex items-center gap-2 text-rose-800 font-bold text-sm">
+                <span>🏛️</span> Departments Struggle With:
+              </div>
+              <ul className="text-xs text-slate-700 space-y-2 list-disc pl-4 leading-relaxed">
+                <li>Framing outcome-based problem statements</li>
+                <li>Discovering & evaluating suitable startups</li>
+                <li>Structuring pilots, IP/data rights & measuring results</li>
+                <li>Transitioning successful pilots into compliant procurement</li>
+              </ul>
+            </div>
+
+            <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-6 space-y-3">
+              <div className="flex items-center gap-2 text-amber-800 font-bold text-sm">
+                <span>🚀</span> Startups Struggle With:
+              </div>
+              <ul className="text-xs text-slate-700 space-y-2 list-disc pl-4 leading-relaxed">
+                <li>Prior-turnover & experience eligibility barriers</li>
+                <li>Extremely long sales cycles and unclear payment milestones</li>
+                <li>Limited visibility into actual government department demand</li>
+                <li>No direct bridge from pilot success to public tender</li>
+              </ul>
+            </div>
+
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-3xl p-6 space-y-3">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+                <span>⚡</span> The GovBridge Solution:
+              </div>
+              <p className="text-xs text-slate-700 leading-relaxed font-semibold">
+                A transparent, competitive, legally compliant Innovation-Procurement pathway. Redesigned to cover every stage — not eligibility and communication alone!
+              </p>
+              <div className="text-[11px] bg-emerald-100 text-emerald-900 p-2.5 rounded-xl font-bold border border-emerald-300">
+                ✅ Structured SOW + Independent Evaluation + Milestone-linked Payments + GeM Scale Bridge
+              </div>
+            </div>
+          </div>
+
+          {/* MAIN INTERACTIVE VISUAL FLOWCHART GRAPH */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-8">
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-extrabold text-slate-900">
+                End-to-End Interactive Visual Flowchart
+              </h2>
+              <p className="text-xs text-slate-500">
+                Click on any step card below to inspect its operational data inputs, compliance standards, and output contracts.
+              </p>
+            </div>
+
+            {/* STAGES 1 to 8: LINEAR & PROGRESSIVE PIPELINE */}
+            <div className="space-y-6">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2">
+                Phase 1: Discovery, Evaluation & Pilot Sandbox Execution (Stages 1 - 8)
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {lifecycleSteps.slice(0, 8).map((step) => {
+                  const isFiltered = perspective !== 'all' && step.category !== 'all' && step.category !== perspective;
+                  return (
+                    <div
+                      key={step.id}
+                      onClick={() => setSelectedStep(step)}
+                      className={`relative bg-slate-50 border-2 rounded-2xl p-5 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-lg space-y-3 ${
+                        isFiltered ? 'opacity-40 grayscale' : 'border-slate-200 hover:border-blue-500 bg-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-lg">
+                          {step.code}
+                        </span>
+                        <span className="text-2xl">{step.icon}</span>
+                      </div>
+                      <h4 className="font-extrabold text-slate-900 text-sm leading-snug">{step.title}</h4>
+                      <p className="text-xs text-slate-600 leading-relaxed">{step.summary}</p>
+                      
+                      <div className="pt-2 text-[11px] font-bold text-blue-600 flex items-center gap-1">
+                        <span>Inspect Step Mechanics</span> <span>→</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* CONDITIONAL DECISION BRANCH GATE (STAGE 8 TO 9 SPLIT) */}
+            <div className="bg-gradient-to-r from-amber-50 via-slate-50 to-emerald-50 border-2 border-amber-200 rounded-3xl p-8 space-y-6 relative">
+              <div className="text-center max-w-xl mx-auto space-y-2">
+                <div className="inline-block bg-amber-500 text-white font-extrabold text-xs px-4 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                  ⚡ Key Decision Gate
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">Pilot Evaluation: Is Pilot Successful?</h3>
+                <p className="text-xs text-slate-600">
+                  After Stage 8 (Milestone Payment Request), the independent evaluation committee audits measured KPI performance against baseline targets.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                {/* YES BRANCH */}
+                <div className="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-6 space-y-4">
+                  <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-sm">
+                    <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">✓</span>
+                    YES: Target KPIs Met & Evidence Validated
+                  </div>
+                  <p className="text-xs text-emerald-900 leading-relaxed">
+                    Proceeds directly to Stage 9 (Independent Validation), Stage 10 (Procurement Transition), and Stage 11 (GeM Scale-Up Tender Bridge).
+                  </p>
+                </div>
+
+                {/* NO BRANCH */}
+                <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-6 space-y-4">
+                  <div className="flex items-center gap-2 text-rose-800 font-extrabold text-sm">
+                    <span className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs">✕</span>
+                    NO: Partial Success / Targets Missed
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-bold">
+                    <div className="bg-white p-2 rounded-lg border border-rose-200 text-slate-800">
+                      🔄 Extend
+                      <div className="text-[9px] text-slate-500 font-normal">Adjust timeline</div>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-rose-200 text-slate-800">
+                      🛠️ Redesign
+                      <div className="text-[9px] text-slate-500 font-normal">Modify SOW</div>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-rose-200 text-rose-700">
+                      🛑 Stop
+                      <div className="text-[9px] text-slate-500 font-normal">End engagement</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* STAGES 9 to 11: VALIDATION & SCALE-UP GATE */}
+            <div className="space-y-6 pt-4">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2">
+                Phase 2: Independent Validation, Procurement & Scale-Up Gate (Stages 9 - 11)
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {lifecycleSteps.slice(8, 11).map((step) => {
+                  const isFiltered = perspective !== 'all' && step.category !== 'all' && step.category !== perspective;
+                  return (
+                    <div
+                      key={step.id}
+                      onClick={() => setSelectedStep(step)}
+                      className={`relative bg-emerald-50/50 border-2 rounded-2xl p-5 cursor-pointer transition transform hover:-translate-y-1 hover:shadow-lg space-y-3 ${
+                        isFiltered ? 'opacity-40 grayscale' : 'border-emerald-200 hover:border-emerald-500 bg-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-lg">
+                          {step.code}
+                        </span>
+                        <span className="text-2xl">{step.icon}</span>
+                      </div>
+                      <h4 className="font-extrabold text-slate-900 text-sm leading-snug">{step.title}</h4>
+                      <p className="text-xs text-slate-600 leading-relaxed">{step.summary}</p>
+                      
+                      <div className="pt-2 text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                        <span>Inspect Step Mechanics</span> <span>→</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* STEP INSPECTOR MODAL */}
+          {selectedStep && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-8 max-w-2xl w-full space-y-6 relative shadow-2xl animate-fade-in">
+                <button 
+                  onClick={() => setSelectedStep(null)}
+                  className="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold flex items-center justify-center"
+                >
+                  ✕
+                </button>
+
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                  <span className="text-3xl">{selectedStep.icon}</span>
+                  <div>
+                    <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{selectedStep.code}</span>
+                    <h3 className="text-xl font-extrabold text-slate-900">{selectedStep.title}</h3>
+                  </div>
+                </div>
+
+                <div className="space-y-4 text-xs">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="font-bold text-slate-800 mb-1">Overview Summary</div>
+                    <div className="text-slate-600 leading-relaxed">{selectedStep.summary}</div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-1">
+                      <div className="font-bold text-blue-900">👤 Key Responsible Actor</div>
+                      <div className="text-slate-700 font-semibold">{selectedStep.details.actor}</div>
+                    </div>
+
+                    <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-1">
+                      <div className="font-bold text-indigo-900">📜 Policy & Compliance Standard</div>
+                      <div className="text-slate-700 font-semibold">{selectedStep.details.compliance}</div>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
+                      <div className="font-bold text-slate-800">📥 Data Inputs</div>
+                      <div className="text-slate-600">{selectedStep.details.inputs}</div>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
+                      <div className="font-bold text-slate-800">📤 Generated Outputs</div>
+                      <div className="text-slate-600">{selectedStep.details.outputs}</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 space-y-1">
+                    <div className="font-bold text-emerald-900">💾 System Data Saved & Verified</div>
+                    <div className="text-emerald-800 font-semibold">{selectedStep.details.dataCaptured}</div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button 
+                    onClick={() => setSelectedStep(null)}
+                    className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md"
+                  >
+                    Close Inspector
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==========================================
     // LOGIN & SIGNUP PAGES
     // ==========================================
     function LoginPage({ setAuthUser }) {
@@ -1278,6 +2283,8 @@
               {currentPath === '/login' && <LoginPage setAuthUser={setAuthUser} />}
               {currentPath === '/startup/register' && <StartupRegisterPage />}
               {currentPath === '/problem-statements' && <ProblemStatementsPage />}
+              {currentPath === '/pilots' && <PilotLifecyclePage user={authUser} />}
+              {currentPath === '/how-it-works' && <HowItWorksPage />}
               {currentPath === '/admin/dashboard' && <AdminDashboardPage user={authUser} />}
             </main>
           </div>

@@ -1,0 +1,15 @@
+{
+  "header": {
+    "alg": "HS256",
+    "typ": "JWT"
+  },
+  "payload": {
+    "id": "66d9ab12e4b0123456789a01",
+    "role": "startup",
+    "email": "innovator@techstartup.in",
+    "iat": 1788593963,
+    "exp": 1789198763
+  },
+  "secret_key": "govbridge_secret_2026",
+  "usage_instruction": "Copy startupToken from 01_jwt_startup_token.txt into https://jwt.io"
+}

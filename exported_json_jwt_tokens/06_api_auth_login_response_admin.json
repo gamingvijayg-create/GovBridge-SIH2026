@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDlhYjEyZTRiMDEyMzQ1Njc4OWIwMiIsInJvbGUiOiJhZG1pbiIsImVtYWlsIjoiYWRtaW5AZ292YnJpZGdlLmdvdi5pbiIsImlhdCI6MTc4ODU5Mzk2MywiZXhwIjoxNzg5MTk4NzYzfQ.CJauj4cAtlxYadRPE9pRQ0pusxjN4u_ieqWSWGjoVdI",
+  "user": {
+    "id": "66d9ab12e4b0123456789b02",
+    "name": "GovBridge Administrator",
+    "email": "admin@govbridge.gov.in",
+    "role": "admin"
+  }
+}

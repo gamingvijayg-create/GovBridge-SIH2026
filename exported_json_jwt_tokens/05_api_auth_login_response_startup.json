@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZDlhYjEyZTRiMDEyMzQ1Njc4OWEwMSIsInJvbGUiOiJzdGFydHVwIiwiZW1haWwiOiJpbm5vdmF0b3JAdGVjaHN0YXJ0dXAuaW4iLCJpYXQiOjE3ODg1OTM5NjMsImV4cCI6MTc4OTE5ODc2M30.mzwo_sBwEnRR3AGorNVmv6tHcfjPi61ZOSIwTNs8lDY",
+  "user": {
+    "id": "66d9ab12e4b0123456789a01",
+    "name": "AgriTech Solutions Pvt Ltd",
+    "email": "innovator@techstartup.in",
+    "role": "startup"
+  }
+}

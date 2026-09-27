@@ -18,21 +18,22 @@ const PREFERRED_MODELS = [
   'qwen/qwen3.6-27b',
   'groq/compound-mini',
   'groq/compound',
-  'openai/gpt-oss-20b',
-  'llama-3.3-70b-versatile'
+  'openai/gpt-oss-20b'
 ];
 
 const createCompletionWithFallback = async (groq, payload) => {
   let lastError;
   for (const model of PREFERRED_MODELS) {
     try {
-      return await groq.chat.completions.create({ ...payload, model });
+      return await groq.chat.completions.create({
+        max_tokens: 1024,
+        ...payload,
+        model
+      });
     } catch (err) {
       lastError = err;
-      if (err?.status === 404 || err?.status === 429 || err?.error?.code === 'model_not_found' || err?.error?.code === 'rate_limit_exceeded') {
-        continue;
-      }
-      throw err;
+      console.warn(`Groq Model ${model} failed (${err?.status || err?.message}), trying fallback...`);
+      continue;
     }
   }
   throw lastError;
@@ -187,16 +188,8 @@ const evaluateStartupApplication = async (documentText, startupMetadata = {}) =>
       messages: [
         {
           role: 'system',
-          content: `You are a government startup evaluator. Extract technical parameters from the document text.
-Respond strictly in valid json format with no extra markdown fences:
-{
-  "skills": ["skill1", "skill2"],
-  "turnover": "annual turnover amount if mentioned",
-  "sector": "business domain/industry",
-  "experience_years": 0,
-  "dpiit_registered": false,
-  "summary": "2 sentence executive summary of capability"
-}`
+          content: `You are a government startup evaluator. Extract parameters. Respond strictly in valid JSON format:
+{"skills":["skill1"],"turnover":"amount","sector":"domain","experience_years":0,"dpiit_registered":false,"summary":"executive summary"}`
         },
         {
           role: 'user',

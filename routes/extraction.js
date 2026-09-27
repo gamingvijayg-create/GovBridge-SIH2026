@@ -35,8 +35,7 @@ const PREFERRED_MODELS = [
   'qwen/qwen3.6-27b',
   'groq/compound-mini',
   'groq/compound',
-  'openai/gpt-oss-20b',
-  'llama-3.3-70b-versatile'
+  'openai/gpt-oss-20b'
 ];
 
 // Helper to execute completions with fallback models
@@ -45,6 +44,7 @@ const createCompletionWithFallback = async (groq, payload) => {
   for (const model of PREFERRED_MODELS) {
     try {
       const completion = await groq.chat.completions.create({
+        max_tokens: 1024,
         ...payload,
         model
       });
@@ -52,10 +52,7 @@ const createCompletionWithFallback = async (groq, payload) => {
     } catch (err) {
       lastError = err;
       console.warn(`Model ${model} failed (${err?.status || err?.message}), attempting fallback...`);
-      if (err?.status === 404 || err?.status === 429 || err?.error?.code === 'model_not_found' || err?.error?.code === 'rate_limit_exceeded') {
-        continue;
-      }
-      throw err;
+      continue;
     }
   }
   throw lastError;

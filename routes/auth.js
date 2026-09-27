@@ -30,9 +30,10 @@ router.post('/signup', async (req, res) => {
       role: 'startup'
     });
 
+    const secretKey = String(JWT_SECRET || 'govbridge_secret_2026');
     const token = jwt.sign(
-      { id: newUser._id, role: newUser.role, email: newUser.email },
-      JWT_SECRET,
+      { id: String(newUser._id), role: String(newUser.role), email: String(newUser.email) },
+      secretKey,
       { expiresIn: '7d' }
     );
 
@@ -40,7 +41,7 @@ router.post('/signup', async (req, res) => {
       success: true,
       token,
       user: {
-        id: newUser._id,
+        id: String(newUser._id),
         name: newUser.name,
         email: newUser.email,
         role: newUser.role
@@ -53,6 +54,8 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+const { adminUsers } = require('../data/seedData');
+
 // POST /api/auth/login - Authenticate Startup or Admin User
 router.post('/login', async (req, res) => {
   try {
@@ -63,7 +66,23 @@ router.post('/login', async (req, res) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    const user = await User.findOne({ email: normalizedEmail });
+    let user = await User.findOne({ email: normalizedEmail });
+
+    // Auto-create configured admin accounts on demand if DB was cleared
+    if (!user) {
+      const adminMatch = adminUsers.find(a => a.email.toLowerCase() === normalizedEmail);
+      if (adminMatch) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(adminMatch.password, salt);
+        user = await User.create({
+          name: adminMatch.name,
+          email: adminMatch.email,
+          password: hashedPassword,
+          role: 'admin'
+        });
+      }
+    }
+
     if (!user) {
       return res.status(401).json({ success: false, error: 'Invalid email or password credentials.' });
     }
@@ -73,9 +92,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password credentials.' });
     }
 
+    const secretKey = String(JWT_SECRET || 'govbridge_secret_2026');
     const token = jwt.sign(
-      { id: user._id, role: user.role, email: user.email },
-      JWT_SECRET,
+      { id: String(user._id), role: String(user.role), email: String(user.email) },
+      secretKey,
       { expiresIn: '7d' }
     );
 
@@ -83,7 +103,7 @@ router.post('/login', async (req, res) => {
       success: true,
       token,
       user: {
-        id: user._id,
+        id: String(user._id),
         name: user.name,
         email: user.email,
         role: user.role

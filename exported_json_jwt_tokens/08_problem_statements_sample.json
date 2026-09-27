@@ -1,0 +1,39 @@
+[
+  {
+    "_id": "66d9ab12e4b0123456789c01",
+    "title": "Smart Crop Advisory & Regional Pest Outbreak Warning System",
+    "department": "Ministry of Agriculture & Farmers Welfare",
+    "category": "AgriTech",
+    "description": "AI-driven regional language crop advisory platform predicting pest outbreaks from soil IoT sensors.",
+    "requiredSkills": [
+      "IoT Sensors",
+      "Machine Learning",
+      "Satellite Imagery",
+      "Agronomy Data"
+    ],
+    "eligibilityCriteria": "DPIIT recognized startup, minimum 3 years experience, turnover >= 40 Lakhs INR.",
+    "minimumExperience": 3,
+    "dpiitRequired": true,
+    "minimumTurnover": "40 Lakhs",
+    "deadline": "Q4 2026",
+    "active": true
+  },
+  {
+    "_id": "66d9ab12e4b0123456789c02",
+    "title": "Interoperable Digital Health Records & Zero-Trust Consent Layer",
+    "department": "Ministry of Health & Family Welfare",
+    "category": "HealthTech",
+    "description": "Consent-managed health data exchange layer in FHIR and DICOM formats.",
+    "requiredSkills": [
+      "FHIR Standards",
+      "Health Data Encryption",
+      "Zero-Trust Architecture"
+    ],
+    "eligibilityCriteria": "DPIIT recognized startup, minimum 4 years HealthTech experience.",
+    "minimumExperience": 4,
+    "dpiitRequired": true,
+    "minimumTurnover": "50 Lakhs",
+    "deadline": "Q4 2026",
+    "active": true
+  }
+]

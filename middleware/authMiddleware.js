@@ -12,7 +12,8 @@ const verifyToken = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const secretKey = String(JWT_SECRET || 'govbridge_secret_2026');
+    const decoded = jwt.verify(token, secretKey);
 
     const user = await User.findById(decoded.id).select('-password');
     if (!user) {
@@ -22,7 +23,8 @@ const verifyToken = async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
-    return res.status(401).json({ success: false, error: 'Invalid or expired token.' });
+    console.error('JWT Verification Error:', err.message);
+    return res.status(401).json({ success: false, error: 'Invalid or expired authentication token.' });
   }
 };
 
