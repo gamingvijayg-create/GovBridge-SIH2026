@@ -4,7 +4,6 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const dns = require('dns');
 const path = require('path');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 
 // Fix Windows DNS resolution issue for MongoDB Atlas srv lookups
 if (dns.setDefaultResultOrder) {
@@ -123,43 +122,36 @@ async function autoSeedData() {
 // Database Connection Manager (Cloud Atlas with Local Memory Fallback)
 async function connectDatabase() {
   const cloudUri = process.env.MONGO_URI;
-  if (cloudUri) {
+
+  if (!cloudUri) {
+    console.error('❌ MONGO_URI is not set!');
+    if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+      process.exit(1); // production-la fake DB use pannadhu
+    }
+  } else {
     try {
       console.log('Connecting to MongoDB Atlas Cloud...');
-      await mongoose.connect(cloudUri, { serverSelectionTimeoutMS: 3000 });
-      console.log('Connected to MongoDB Atlas Cloud successfully!');
+      await mongoose.connect(cloudUri, { serverSelectionTimeoutMS: 30000 });
+      console.log('✅ Connected to MongoDB Atlas Cloud successfully!');
       await autoSeedData();
       return;
     } catch (err) {
-      console.warn(' Atlas connection unavailable:', err.message);
-      console.log('Starting Local Embedded MongoDB Server for Desktop Compass...');
+      console.error('❌ Atlas connection failed:', err.message);
+      if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+        process.exit(1);
+      }
     }
   }
 
-  try {
-    const mongoServer = await MongoMemoryServer.create({
-      instance: { port: 27017, dbName: 'govbridge' }
-    });
-    const localUri = mongoServer.getUri();
-    await mongoose.connect(localUri);
-    console.log(' Local MongoDB Database Server is Live!');
-    console.log(' Connect Desktop MongoDB Compass to: mongodb://127.0.0.1:27017/govbridge');
-    await autoSeedData();
-  } catch (localErr) {
-    try {
-      const mongoServer = await MongoMemoryServer.create({ instance: { dbName: 'govbridge' } });
-      const localUri = mongoServer.getUri();
-      await mongoose.connect(localUri);
-      console.log(' Local MongoDB Database Server is Live!');
-      console.log(` Connect Desktop MongoDB Compass to: ${localUri}`);
-      await autoSeedData();
-    } catch (e) {
-      console.error('Local DB Initialization Error:', e.message);
-    }
-  }
+  // Local development fallback only
+  const { MongoMemoryServer } = require('mongodb-memory-server');
+  const mongoServer = await MongoMemoryServer.create({
+    instance: { dbName: 'govbridge' }
+  });
+  await mongoose.connect(mongoServer.getUri());
+  console.log('Local dev MongoDB is live');
+  await autoSeedData();
 }
-
-connectDatabase();
 
 // Start HTTP server
 app.listen(PORT, '0.0.0.0', () => {
