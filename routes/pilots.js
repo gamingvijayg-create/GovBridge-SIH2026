@@ -188,8 +188,146 @@ router.post('/:id/scale-up-decision', async (req, res) => {
   }
 });
 
-// Helper function to seed initial demo data matching the slides
+// POST /api/pilots/:id/daily-updates - Post daily progress update with photo/video evidence
+router.post('/:id/daily-updates', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, progressPercentage, mediaType, mediaUrl, uploadedBy } = req.body;
+
+    const pilot = await PilotLifecycle.findById(id);
+    if (!pilot) return res.status(404).json({ success: false, error: 'Pilot not found' });
+
+    const newUpdate = {
+      title: title || 'Daily Progress Update',
+      description: description || '',
+      progressPercentage: Number(progressPercentage) || 0,
+      mediaType: mediaType || 'photo',
+      mediaUrl: mediaUrl || '',
+      uploadedBy: uploadedBy || pilot.startupName,
+      uploadedAt: new Date(),
+      adminReviewed: false
+    };
+
+    pilot.dailyUpdates.unshift(newUpdate);
+    await pilot.save();
+
+    res.json({
+      success: true,
+      message: 'Daily progress update with evidence posted successfully!',
+      data: pilot.dailyUpdates[0],
+      pilot
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /api/pilots/:id/daily-updates/:updateId/review - Admin marks update as reviewed
+router.put('/:id/daily-updates/:updateId/review', async (req, res) => {
+  try {
+    const { id, updateId } = req.params;
+    const { adminComment } = req.body;
+
+    const pilot = await PilotLifecycle.findById(id);
+    if (!pilot) return res.status(404).json({ success: false, error: 'Pilot not found' });
+
+    const update = pilot.dailyUpdates.id(updateId);
+    if (!update) return res.status(404).json({ success: false, error: 'Daily update item not found' });
+
+    update.adminReviewed = true;
+    update.adminReviewedAt = new Date();
+    if (adminComment !== undefined) update.adminComment = adminComment;
+
+    await pilot.save();
+    res.json({
+      success: true,
+      message: 'Daily update reviewed by Admin!',
+      data: update,
+      pilot
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/pilots/:id/expenditures - Log expenditure (What did we spend money on?)
+router.post('/:id/expenditures', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { category, description, amount, spendDate, receiptUrl, milestoneCode } = req.body;
+
+    const pilot = await PilotLifecycle.findById(id);
+    if (!pilot) return res.status(404).json({ success: false, error: 'Pilot not found' });
+
+    if (!description || !amount) {
+      return res.status(400).json({ success: false, error: 'Description and Amount are required' });
+    }
+
+    const newExpense = {
+      category: category || 'Misc',
+      description,
+      amount: Number(amount),
+      spendDate: spendDate || new Date().toISOString().split('T')[0],
+      receiptUrl: receiptUrl || '',
+      milestoneCode: milestoneCode || 'M1',
+      loggedAt: new Date()
+    };
+
+    pilot.expenditures.unshift(newExpense);
+    await pilot.save();
+
+    res.json({
+      success: true,
+      message: 'Expenditure logged successfully',
+      data: pilot.expenditures[0],
+      pilot
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/pilots/:id/financials - Financial breakdown (Paid, Balance, Spent)
+router.get('/:id/financials', async (req, res) => {
+  try {
+    const pilot = await PilotLifecycle.findById(req.params.id);
+    if (!pilot) return res.status(404).json({ success: false, error: 'Pilot not found' });
+
+    const allocatedBudget = pilot.allocatedBudget || 5000000;
+    const totalPaid = (pilot.milestones || [])
+      .filter(m => m.paymentStatus === 'Paid')
+      .reduce((sum, m) => sum + (m.amount || 0), 0);
+    const totalRequested = (pilot.milestones || [])
+      .filter(m => m.paymentStatus === 'Requested')
+      .reduce((sum, m) => sum + (m.amount || 0), 0);
+    const remainingBalance = allocatedBudget - totalPaid;
+    const totalSpent = (pilot.expenditures || [])
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        pilotId: pilot._id,
+        startupName: pilot.startupName,
+        allocatedBudget,
+        totalPaid,
+        totalRequested,
+        remainingBalance,
+        totalSpent,
+        netCashOnHand: totalPaid - totalSpent,
+        milestones: pilot.milestones,
+        expenditures: pilot.expenditures
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Helper function to seed initial 6 pilot teams
 async function seedSamplePilots() {
+  await PilotLifecycle.deleteMany({}); // clean old demo data
+
   const sampleData = [
     {
       title: 'AI Pest Outbreak Warning & Vernacular Advisory Pilot',
@@ -198,80 +336,48 @@ async function seedSamplePilots() {
       startupName: 'AgriSense Innovations Pvt Ltd',
       founderName: 'Rajesh Kumar',
       contactEmail: 'contact@agrisense.in',
+      allocatedBudget: 5000000,
       outcomeObjective: 'Predict pest outbreaks 7 days in advance across 50 districts with >=90% accuracy.',
       baselineTargetKPIs: 'Baseline: 45% manual field prediction -> Target: 90% automated satellite/sensor AI prediction.',
       scope: '50 Krishi Vigyan Kendras (KVKs) in Tamil Nadu, Andhra Pradesh, and Karnataka.',
       durationMonths: 6,
-      acceptanceCriteria: 'STQC security audit passed; latency < 2 sec for audio advisories in 4 languages.',
-      cybersecurityControls: 'ISO 27001 Certified, Encrypted IoT telemetry, Zero-Trust API gateway.',
-      dataHandling: 'Data hosted strictly on MeitY-empanelled Cloud (NIC Data Centre, Chennai).',
-      ipOwnership: 'Core AI algorithm owned by Startup; Department retains perpetual non-exclusive government usage license.',
-      riskManagement: 'Fail-safe offline SMS fallback if cellular IoT data is interrupted.',
-      validationPlan: 'Independent evaluation by ICAR & STQC certified labs.',
       status: 'Sandbox_Active',
       milestones: [
+        { milestoneCode: 'M1', title: 'M1 — Sandbox Setup & SOW Signed', dueDate: 'Month 1', amount: 500000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M2', title: 'M2 — Telemetry & Sensor Deployment', dueDate: 'Month 3', amount: 1500000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M3', title: 'M3 — Vernacular AI Audio Bot Gate', dueDate: 'Month 5', amount: 2000000, verificationStatus: 'Pending', paymentStatus: 'Requested' },
+        { milestoneCode: 'FinalGate', title: 'Final Gate — Scale-Up Audit', dueDate: 'Month 6', amount: 1000000, verificationStatus: 'Pending', paymentStatus: 'Unpaid' }
+      ],
+      dailyUpdates: [
         {
-          milestoneCode: 'M1',
-          title: 'M1 — Pilot Ready (Sandbox Setup & SOW Signed)',
-          description: 'Contract approved, sandbox environment initialized, baseline sensors deployed.',
-          dueDate: 'Month 1',
-          amount: 500000,
-          baselineMetric: '0 KVKs Connected',
-          targetMetric: '5 KVKs Connected & Sandbox Live',
-          actualMetric: '5 KVKs Connected & Sandbox Live',
-          evidenceNotes: 'SOW signed by Ministry Director. Initial baseline dataset ingested.',
-          verificationStatus: 'Verified',
-          paymentStatus: 'Paid',
-          paymentApprovedAt: new Date(Date.now() - 30 * 24 * 3600 * 1000)
+          title: 'Field Sensor Node #14 Installed in Madurai KVK',
+          description: 'Deployed IoT pest traps with optical camera feed. Initial test image verified with 94.2% insect classification score.',
+          progressPercentage: 65,
+          mediaType: 'photo',
+          mediaUrl: 'https://images.unsplash.com/photo-1595838761569-808b8b0e87d3?auto=format&fit=crop&w=600&q=80',
+          uploadedBy: 'AgriSense Engineering Team',
+          uploadedAt: new Date(Date.now() - 24 * 3600 * 1000),
+          adminReviewed: true,
+          adminReviewedAt: new Date(Date.now() - 12 * 3600 * 1000),
+          adminComment: 'Great field progress! Telemetry looks solid.'
         },
         {
-          milestoneCode: 'M2',
-          title: 'M2 — Evidence Achieved (KPI Verification & Pilot Data)',
-          description: 'KPI evidence submitted showing pest prediction accuracy and alerts generated.',
-          dueDate: 'Month 3',
-          amount: 1500000,
-          baselineMetric: '45% Accuracy',
-          targetMetric: '85% Accuracy',
-          actualMetric: '88.4% Accuracy (Verified via 1,200 ground truth samples)',
-          evidenceNotes: 'Submitted ICAR verification report & telemetry log dashboard.',
-          verificationStatus: 'Verified',
-          paymentStatus: 'Requested',
-          paymentRequestedAt: new Date(Date.now() - 2 * 24 * 3600 * 1000)
-        },
-        {
-          milestoneCode: 'M3',
-          title: 'M3 — Payment Gate (Scale Verification & Vernacular Audio)',
-          description: 'Verified milestone triggering payment request package.',
-          dueDate: 'Month 5',
-          amount: 2000000,
-          baselineMetric: 'English Only',
-          targetMetric: '4 Regional Languages Live',
-          actualMetric: 'Tamil, Telugu, Kannada & Hindi operational',
-          evidenceNotes: 'Voice bot audio logs & farmer response surveys attached.',
-          verificationStatus: 'Pending',
-          paymentStatus: 'Unpaid'
-        },
-        {
-          milestoneCode: 'FinalGate',
-          title: 'Final Gate — Independent Validation & Scale-Up Bridge',
-          description: 'Independent validation committee review before transition to compliant tender.',
-          dueDate: 'Month 6',
-          amount: 1000000,
-          baselineMetric: 'Pilot Stage (50 KVKs)',
-          targetMetric: 'Pan-India GeM Tender Ready',
-          actualMetric: 'Pending Final Gate Committee Audit',
-          evidenceNotes: 'Final compliance audit scheduled.',
-          verificationStatus: 'Pending',
-          paymentStatus: 'Unpaid'
+          title: 'Vernacular Tamil Audio Bot Field Trial Video',
+          description: 'Live farmer testing of voice query: "Fall armyworm control in maize". Video clip shows sub-2s latency.',
+          progressPercentage: 70,
+          mediaType: 'video',
+          mediaUrl: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=600&q=80',
+          uploadedBy: 'AgriSense Field Ops',
+          uploadedAt: new Date(),
+          adminReviewed: false
         }
       ],
-      scaleUpDecision: {
-        decision: 'Scale',
-        justification: 'Exceeded target accuracy (88.4% vs 85%). Farmer satisfaction at 94%.',
-        validatorNotes: 'Independent ICAR panel recommended immediate procurement transition.',
-        gemTenderBridgeStatus: 'Published on GeM Portal (Direct Tender Bridge)',
-        decidedAt: new Date()
-      }
+      expenditures: [
+        { category: 'Cloud & Hardware', description: 'Bought 25 IoT Optical Sensor Traps', amount: 450000, spendDate: '2026-09-10', milestoneCode: 'M1' },
+        { category: 'R&D & AI APIs', description: 'Groq AI API Inference Credits', amount: 120000, spendDate: '2026-09-18', milestoneCode: 'M1' },
+        { category: 'Field Testing & Operations', description: 'Farmer KVK Onboarding Workshops in TN', amount: 180000, spendDate: '2026-09-25', milestoneCode: 'M2' },
+        { category: 'Team Salaries', description: 'Agri-AI Research Engineers Stipend', amount: 550000, spendDate: '2026-09-30', milestoneCode: 'M2' }
+      ]
     },
     {
       title: 'Interoperable FHIR Health Data Exchange Pilot',
@@ -280,78 +386,184 @@ async function seedSamplePilots() {
       startupName: 'MediTrust HealthTech Solutions',
       founderName: 'Priya Sharma',
       contactEmail: 'info@meditrust.io',
-      outcomeObjective: 'Zero-trust FHIR & DICOM medical record exchange across 10 District Hospitals without central data storage.',
-      baselineTargetKPIs: 'Baseline: 15 min record retrieval -> Target: < 3 sec encrypted exchange with ABDM compliance.',
+      allocatedBudget: 4500000,
+      outcomeObjective: 'Zero-trust FHIR medical record exchange across 10 District Hospitals without central storage.',
+      baselineTargetKPIs: 'Baseline: 15 min record retrieval -> Target: < 3 sec encrypted exchange.',
       scope: '10 Government General Hospitals in Delhi NCR.',
       durationMonths: 4,
-      acceptanceCriteria: 'ABDM M3 Certification, 0 data leaks during penetration testing.',
-      cybersecurityControls: 'CERT-In audited, End-to-End Dynamic Consent Management.',
-      dataHandling: 'Zero-storage relay architecture, patient consent validated on-chain/ABDM token.',
-      ipOwnership: 'Startup retains background IP; Ministry holds perpetual license for public healthcare system.',
-      riskManagement: 'Redundant HSM encryption fallback.',
-      validationPlan: 'Independent review by National Health Authority (NHA) IT panel.',
       status: 'Sandbox_Active',
       milestones: [
+        { milestoneCode: 'M1', title: 'M1 — ABDM Gateway Setup', dueDate: 'Month 1', amount: 800000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M2', title: 'M2 — Record Transmission Speed', dueDate: 'Month 2', amount: 1200000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M3', title: 'M3 — CERT-In Security Clearance', dueDate: 'Month 3', amount: 1500000, verificationStatus: 'Pending', paymentStatus: 'Requested' },
+        { milestoneCode: 'FinalGate', title: 'Final Gate — Scale Audit', dueDate: 'Month 4', amount: 1000000, verificationStatus: 'Pending', paymentStatus: 'Unpaid' }
+      ],
+      dailyUpdates: [
         {
-          milestoneCode: 'M1',
-          title: 'M1 — Pilot Ready (ABDM Gateway Setup)',
-          description: 'Gateway connected to ABDM sandbox & 2 test hospitals.',
-          dueDate: 'Month 1',
-          amount: 800000,
-          baselineMetric: 'No Gateway',
-          targetMetric: 'Gateway Operational',
-          actualMetric: 'Gateway Operational',
-          evidenceNotes: 'ABDM Sandbox Integration Certificate issued.',
-          verificationStatus: 'Verified',
-          paymentStatus: 'Paid'
-        },
-        {
-          milestoneCode: 'M2',
-          title: 'M2 — Evidence Achieved (Record Exchange Speed)',
-          description: 'Demonstrate < 3 sec encrypted transmission for 10,000 synthetic patient records.',
-          dueDate: 'Month 2',
-          amount: 1200000,
-          baselineMetric: '15 min manual',
-          targetMetric: '< 3 seconds',
-          actualMetric: '1.8 seconds average',
-          evidenceNotes: 'Submitted load testing report by Third Party Auditor.',
-          verificationStatus: 'Verified',
-          paymentStatus: 'Paid'
-        },
-        {
-          milestoneCode: 'M3',
-          title: 'M3 — Payment Gate (Security & Penetration Test)',
-          description: 'CERT-In empanelled auditor zero-vulnerability report.',
-          dueDate: 'Month 3',
-          amount: 1500000,
-          baselineMetric: 'Unverified Security',
-          targetMetric: 'Zero Critical Vulnerabilities',
-          actualMetric: 'Audit Passed - 0 High/Critical Vulns',
-          evidenceNotes: 'CERT-In Clearance Certificate uploaded.',
-          verificationStatus: 'Verified',
-          paymentStatus: 'Requested'
-        },
-        {
-          milestoneCode: 'FinalGate',
-          title: 'Final Gate — Independent Validation & Scale-Up',
-          description: 'Final Gate committee assessment.',
-          dueDate: 'Month 4',
-          amount: 1000000,
-          baselineMetric: '10 Hospitals',
-          targetMetric: 'Ready for 500 District Hospitals',
-          actualMetric: 'Audit complete',
-          evidenceNotes: 'Ready for scale up decision.',
-          verificationStatus: 'Pending',
-          paymentStatus: 'Unpaid'
+          title: 'FHIR Vault Penetration Test & STQC Audit Log',
+          description: 'Completed automated fuzzing. Zero critical vulnerabilities detected across 10 hospital consent nodes.',
+          progressPercentage: 80,
+          mediaType: 'photo',
+          mediaUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80',
+          uploadedBy: 'MediTrust Lead Architect',
+          uploadedAt: new Date(Date.now() - 5 * 3600 * 1000),
+          adminReviewed: false
         }
       ],
-      scaleUpDecision: {
-        decision: 'Pending',
-        justification: 'Awaiting Final Gate approval.',
-        validatorNotes: 'NHA Audit report under review.',
-        gemTenderBridgeStatus: 'In Review',
-        decidedAt: null
-      }
+      expenditures: [
+        { category: 'Certifications & Audits', description: 'CERT-In Empanelled Penetration Testing Fee', amount: 350000, spendDate: '2026-09-12', milestoneCode: 'M1' },
+        { category: 'Cloud & Hardware', description: 'HSM Cryptographic Key Nodes Hosting', amount: 420000, spendDate: '2026-09-20', milestoneCode: 'M2' },
+        { category: 'Team Salaries', description: 'Healthcare Systems Integrators Payroll', amount: 600000, spendDate: '2026-09-28', milestoneCode: 'M2' }
+      ]
+    },
+    {
+      title: 'AI Adaptive Traffic Signal Control & Ambulance Priority Corridor',
+      problemStatementTitle: 'Smart Urban Congestion Relief & Emergency Corridor Routing',
+      department: 'Ministry of Housing & Urban Affairs',
+      startupName: 'UrbanFlow Mobility AI',
+      founderName: 'Siddharth Varma',
+      contactEmail: 'contact@urbanflow.ai',
+      allocatedBudget: 6000000,
+      outcomeObjective: 'Reduce signal wait time by 35% and provide automated green-corridor for ambulances.',
+      baselineTargetKPIs: 'Baseline: 8 min avg corridor clearance -> Target: < 2.5 min automated clearance.',
+      scope: '24 busy junctions in Bengaluru Outer Ring Road.',
+      durationMonths: 6,
+      status: 'Sandbox_Active',
+      milestones: [
+        { milestoneCode: 'M1', title: 'M1 — Junction Camera Edge Node Deployment', dueDate: 'Month 1', amount: 1000000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M2', title: 'M2 — Ambulance Beacon Interoperability Test', dueDate: 'Month 3', amount: 2000000, verificationStatus: 'Pending', paymentStatus: 'Requested' },
+        { milestoneCode: 'M3', title: 'M3 — Central Command Center Dashboard', dueDate: 'Month 5', amount: 2000000, verificationStatus: 'Pending', paymentStatus: 'Unpaid' },
+        { milestoneCode: 'FinalGate', title: 'Final Gate — Scale Decision', dueDate: 'Month 6', amount: 1000000, verificationStatus: 'Pending', paymentStatus: 'Unpaid' }
+      ],
+      dailyUpdates: [
+        {
+          title: 'Silk Board Junction Edge AI Camera Calibration',
+          description: 'Live test of traffic queue detection algorithm during peak evening rush. Accuracy at 96.1%.',
+          progressPercentage: 50,
+          mediaType: 'photo',
+          mediaUrl: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=600&q=80',
+          uploadedBy: 'UrbanFlow Tech Team',
+          uploadedAt: new Date(Date.now() - 18 * 3600 * 1000),
+          adminReviewed: true,
+          adminReviewedAt: new Date(Date.now() - 2 * 3600 * 1000),
+          adminComment: 'Camera feeds approved by Bengaluru Traffic Police liaison.'
+        }
+      ],
+      expenditures: [
+        { category: 'Cloud & Hardware', description: 'NVIDIA Jetson Edge AI Computing Modules', amount: 650000, spendDate: '2026-09-05', milestoneCode: 'M1' },
+        { category: 'Field Testing & Operations', description: 'Traffic Signal Pole Installation & Wiring', amount: 250000, spendDate: '2026-09-15', milestoneCode: 'M1' }
+      ]
+    },
+    {
+      title: 'Smart River Water Quality IoT & Contamination Alert Network',
+      problemStatementTitle: 'Real-Time Industrial Effluent & River Quality Monitoring',
+      department: 'Ministry of Jal Shakti',
+      startupName: 'AquaPure IoT Networks',
+      founderName: 'Ananya Roy',
+      contactEmail: 'support@aquapure.org',
+      allocatedBudget: 4000000,
+      outcomeObjective: 'Deploy sub-surface sensor buoys detecting chemical spills within 60 seconds.',
+      baselineTargetKPIs: 'Baseline: 48 hr lab testing -> Target: 60 sec real-time IoT alert.',
+      scope: 'Ganges River Stretch near Kanpur & Varanasi.',
+      durationMonths: 5,
+      status: 'Sandbox_Active',
+      milestones: [
+        { milestoneCode: 'M1', title: 'M1 — Sensor Buoy Prototyping & Calibration', dueDate: 'Month 1', amount: 600000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M2', title: 'M2 — River Deployment & Solar Telemetry', dueDate: 'Month 3', amount: 1400000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M3', title: 'M3 — Pollution Control Board API Sync', dueDate: 'Month 4', amount: 1200000, verificationStatus: 'Pending', paymentStatus: 'Unpaid' },
+        { milestoneCode: 'FinalGate', title: 'Final Gate — Scale Approval', dueDate: 'Month 5', amount: 800000, verificationStatus: 'Pending', paymentStatus: 'Unpaid' }
+      ],
+      dailyUpdates: [
+        {
+          title: 'Varanasi Ghat Buoy #03 Water Quality Sensor Stream',
+          description: 'pH, Dissolved Oxygen, and heavy metal optical readings sending telemetry every 30 seconds to Jal Shakti cloud.',
+          progressPercentage: 60,
+          mediaType: 'photo',
+          mediaUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=600&q=80',
+          uploadedBy: 'AquaPure Field Lead',
+          uploadedAt: new Date(Date.now() - 8 * 3600 * 1000),
+          adminReviewed: false
+        }
+      ],
+      expenditures: [
+        { category: 'Cloud & Hardware', description: 'Submersible Optical pH & Heavy Metal Probes', amount: 720000, spendDate: '2026-09-08', milestoneCode: 'M1' },
+        { category: 'R&D & AI APIs', description: 'LoRaWAN Cellular Gateway Module', amount: 180000, spendDate: '2026-09-22', milestoneCode: 'M2' }
+      ]
+    },
+    {
+      title: 'Autonomous Robotics for Municipal Solid Waste Segregation',
+      problemStatementTitle: 'AI-Powered Dry vs Wet Waste Robotic Sorting System',
+      department: 'Ministry of Environment, Forest & Climate Change',
+      startupName: 'CleanWaste Robotics',
+      founderName: 'Vikramaditya Rao',
+      contactEmail: 'contact@cleanwasterobotics.com',
+      allocatedBudget: 5500000,
+      outcomeObjective: 'Sort 2 tonnes of municipal waste per hour with 92% classification accuracy.',
+      baselineTargetKPIs: 'Baseline: 40% manual sorting efficiency -> Target: 92% robotic AI sorting speed.',
+      scope: 'Indore Municipal Solid Waste Processing Plant.',
+      durationMonths: 6,
+      status: 'Sandbox_Active',
+      milestones: [
+        { milestoneCode: 'M1', title: 'M1 — Robotic Arm Assembly & Vision AI Training', dueDate: 'Month 1', amount: 1000000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M2', title: 'M2 — Conveyor Integration & High-Speed Trial', dueDate: 'Month 3', amount: 2000000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M3', title: 'M3 — 30-Day Continuous Facility Audit', dueDate: 'Month 5', amount: 1500000, verificationStatus: 'Pending', paymentStatus: 'Requested' },
+        { milestoneCode: 'FinalGate', title: 'Final Gate — Municipal Procurement Gate', dueDate: 'Month 6', amount: 1000000, verificationStatus: 'Pending', paymentStatus: 'Unpaid' }
+      ],
+      dailyUpdates: [
+        {
+          title: 'Indore MSW Facility Robotic Delta Arm Test Video',
+          description: 'Robotic arm picking recyclable PET bottles at 45 items per minute. Vision model trained on 50k waste items.',
+          progressPercentage: 75,
+          mediaType: 'video',
+          mediaUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=600&q=80',
+          uploadedBy: 'CleanWaste Robotics Engineering',
+          uploadedAt: new Date(Date.now() - 3 * 3600 * 1000),
+          adminReviewed: true,
+          adminReviewedAt: new Date(Date.now() - 1 * 3600 * 1000),
+          adminComment: 'Impressive sorting speed! Madhya Pradesh Swachh Bharat team reviewed.'
+        }
+      ],
+      expenditures: [
+        { category: 'Cloud & Hardware', description: '4-Axis Pneumatic Delta Robotic Arm', amount: 1200000, spendDate: '2026-09-02', milestoneCode: 'M1' },
+        { category: 'R&D & AI APIs', description: 'High-Speed RGB-Depth Industrial Cameras', amount: 480000, spendDate: '2026-09-14', milestoneCode: 'M1' },
+        { category: 'Team Salaries', description: 'Robotics Control Systems Developers', amount: 800000, spendDate: '2026-09-29', milestoneCode: 'M2' }
+      ]
+    },
+    {
+      title: 'Zero-Trust Sovereign Cloud Threat Intelligence Sandbox',
+      problemStatementTitle: 'AI Automated Threat Detection & Malware Isolation for Gov Portals',
+      department: 'Ministry of Electronics & IT (MeitY / CERT-In)',
+      startupName: 'CyberFortress Defense',
+      founderName: 'Karthik Subbaraj',
+      contactEmail: 'sec@cyberfortress.in',
+      allocatedBudget: 7000000,
+      outcomeObjective: 'Isolate zero-day government portal cyber threats in virtual sandbox within 300ms.',
+      baselineTargetKPIs: 'Baseline: 4 hr manual malware analysis -> Target: 300ms automated AI containment.',
+      scope: 'National Informatics Centre (NIC) Sovereign Data Center.',
+      durationMonths: 6,
+      status: 'Sandbox_Active',
+      milestones: [
+        { milestoneCode: 'M1', title: 'M1 — Sandbox Enclave Provisioning & eBPF Drivers', dueDate: 'Month 1', amount: 1500000, verificationStatus: 'Verified', paymentStatus: 'Paid' },
+        { milestoneCode: 'M2', title: 'M2 — Simulated Ransomware & DDoS Attack Trials', dueDate: 'Month 3', amount: 2500000, verificationStatus: 'Pending', paymentStatus: 'Requested' },
+        { milestoneCode: 'M3', title: 'M3 — CERT-In Red Team Stress Test', dueDate: 'Month 5', amount: 2000000, verificationStatus: 'Pending', paymentStatus: 'Unpaid' },
+        { milestoneCode: 'FinalGate', title: 'Final Gate — Pan-Gov Security Certification', dueDate: 'Month 6', amount: 1000000, verificationStatus: 'Pending', paymentStatus: 'Unpaid' }
+      ],
+      dailyUpdates: [
+        {
+          title: 'eBPF Kernel Telemetry Sandbox Log Screen',
+          description: 'Intercepted simulated zero-day buffer overflow payload. Process isolated in isolated MicroVM memory container.',
+          progressPercentage: 55,
+          mediaType: 'photo',
+          mediaUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=600&q=80',
+          uploadedBy: 'CyberFortress Security Red Team',
+          uploadedAt: new Date(Date.now() - 14 * 3600 * 1000),
+          adminReviewed: false
+        }
+      ],
+      expenditures: [
+        { category: 'Cloud & Hardware', description: 'Bare-Metal Isolated Security Enclave Servers', amount: 950000, spendDate: '2026-09-04', milestoneCode: 'M1' },
+        { category: 'Certifications & Audits', description: 'Red Team Penetration Benchmark Services', amount: 400000, spendDate: '2026-09-20', milestoneCode: 'M1' }
+      ]
     }
   ];
 
