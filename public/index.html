@@ -442,7 +442,7 @@
         setTeamMembers(teamMembers.filter((_, i) => i !== index));
       };
 
-      // OTP Verification Handlers
+            // OTP Verification Handlers
       const handleSendPhoneOtp = async () => {
         if (!formData.phone.trim()) {
           alert('Please enter a valid Lead Mobile Phone Number first');
@@ -458,7 +458,7 @@
           if (json.success) {
             setPhoneDemoOtp(json.otp);
             setShowPhoneOtpBox(true);
-            alert(`📱 Phone OTP sent to ${formData.phone}! (Demo OTP Code: ${json.otp})`);
+            setPhoneOtpInput(json.otp); // Auto-fill instantly for seamless experience!
           } else { alert('Error: ' + json.error); }
         } catch(err) { alert(err.message); }
       };
@@ -495,12 +495,12 @@
           if (json.success) {
             setEmailDemoOtp(json.otp);
             setShowEmailOtpBox(true);
-            alert(`📧 Email OTP sent to ${formData.email}! (Demo OTP Code: ${json.otp})`);
+            setEmailOtpInput(json.otp); // Auto-fill instantly!
           } else { alert('Error: ' + json.error); }
         } catch(err) { alert(err.message); }
       };
 
-      const handleVerifyEmailOtp = async () => {
+const handleVerifyEmailOtp = async () => {
         if (!emailOtpInput.trim()) { alert('Please enter 6-digit OTP code'); return; }
         try {
           const res = await fetch('/api/auth/verify-otp', {
