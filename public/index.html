@@ -442,7 +442,7 @@
         setTeamMembers(teamMembers.filter((_, i) => i !== index));
       };
 
-            // OTP Verification Handlers
+                  // OTP Verification Handlers
       const handleSendPhoneOtp = async () => {
         if (!formData.phone.trim()) {
           alert('Please enter a valid Lead Mobile Phone Number first');
@@ -456,9 +456,9 @@
           });
           const json = await res.json();
           if (json.success) {
-            setPhoneDemoOtp(json.otp);
             setShowPhoneOtpBox(true);
-            setPhoneOtpInput(json.otp); // Auto-fill instantly for seamless experience!
+            setPhoneOtpInput(''); // Input field is blank for user to type OTP from SMS app
+            alert('📱 Verification OTP code dispatched to your Mobile Phone SMS Messenger (' + formData.phone + '). Please check your phone SMS inbox and enter the 6-digit code below.');
           } else { alert('Error: ' + json.error); }
         } catch(err) { alert(err.message); }
       };
@@ -493,9 +493,9 @@
           });
           const json = await res.json();
           if (json.success) {
-            setEmailDemoOtp(json.otp);
             setShowEmailOtpBox(true);
-            setEmailOtpInput(json.otp); // Auto-fill instantly!
+            setEmailOtpInput(''); // Blank for user to type from Email inbox
+            alert('📧 Verification OTP code dispatched to your Email Inbox (' + formData.email + '). Please check your email inbox and enter the 6-digit code below.');
           } else { alert('Error: ' + json.error); }
         } catch(err) { alert(err.message); }
       };
@@ -677,7 +677,7 @@ const handleVerifyEmailOtp = async () => {
                   {showPhoneOtpBox && !isPhoneVerified && (
                     <div className="bg-white p-4 rounded-xl border border-blue-300 flex items-center gap-3 animate-fadeIn">
                       <div className="text-[11px] text-slate-600">
-                        Enter 6-digit OTP code sent to phone (Demo: <b>{phoneDemoOtp}</b>):
+                        Enter 6-digit OTP code sent to phone :
                       </div>
                       <input 
                         type="text"
@@ -733,7 +733,7 @@ const handleVerifyEmailOtp = async () => {
                   {showEmailOtpBox && !isEmailVerified && (
                     <div className="bg-white p-4 rounded-xl border border-blue-300 flex items-center gap-3 animate-fadeIn">
                       <div className="text-[11px] text-slate-600">
-                        Enter 6-digit OTP code sent to email (Demo: <b>{emailDemoOtp}</b>):
+                        Enter 6-digit OTP code sent to email :
                       </div>
                       <input 
                         type="text"
