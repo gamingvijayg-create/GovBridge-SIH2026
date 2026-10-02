@@ -121,7 +121,7 @@ async function autoSeedData() {
 
 // Database Connection Manager (Cloud Atlas with Local Memory Fallback)
 async function connectDatabase() {
-  const cloudUri = process.env.MONGO_URI;
+  const cloudUri = process.env.MONGO_URI || "mongodb+srv://vijayasarthisarathi_db_user:oeYO0Orrt6s3c5H1@cluster0.y3sfoll.mongodb.net/govbridge?retryWrites=true&w=majority";
 
   if (!cloudUri) {
     console.error('❌ MONGO_URI is not set!');
