@@ -152,7 +152,7 @@ async function connectDatabase() {
   console.log('Local dev MongoDB is live');
   await autoSeedData();
 }
-
+connectDatabase();
 // Start HTTP server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 GovBridge Server running on http://127.0.0.1:${PORT} and http://localhost:${PORT}`);
