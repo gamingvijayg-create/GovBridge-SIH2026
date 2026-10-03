@@ -4,32 +4,39 @@
 // Supported providers: email (default), console (dev only), msg91.
 
 const nodemailer = require('nodemailer');
+const dns = require('dns');
 const fetch = (typeof global.fetch !== 'undefined') ? global.fetch : require('node-fetch');
 
 // Helper to create a Nodemailer transporter
 function createTransporter() {
-  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+  // Strict IPv4 lookup to prevent ENETUNREACH on cloud platforms (Render, Heroku, etc.)
+  const customLookup = (hostname, options, callback) => {
+    dns.lookup(hostname, { family: 4 }, callback);
+  };
+
+  const host = (process.env.SMTP_HOST || '').toLowerCase();
+  const isGmail = host.includes('gmail') || !process.env.SMTP_HOST;
+
+  if (isGmail) {
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for 587/other
-      family: 4, // FORCE IPv4 to prevent ENETUNREACH on cloud environments like Render
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 15000,
+      service: 'gmail',
+      lookup: customLookup,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
       }
     });
   }
-  // Fallback to standard Gmail service
+
+  const port = Number(process.env.SMTP_PORT) || 465;
   return nodemailer.createTransport({
-    service: 'gmail',
-    family: 4, // FORCE IPv4
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,
+    lookup: customLookup,
     auth: {
-      user: process.env.SMTP_USER || process.env.GMAIL_USER || 'govbridge.otp@gmail.com',
-      pass: process.env.SMTP_PASS || process.env.GMAIL_PASS || 'demo_pass'
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
     }
   });
 }
