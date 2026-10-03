@@ -13,6 +13,10 @@ function createTransporter() {
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT) || 587,
       secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for 587/other
+      family: 4, // FORCE IPv4 to prevent ENETUNREACH on cloud environments like Render
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 15000,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
@@ -22,6 +26,7 @@ function createTransporter() {
   // Fallback to standard Gmail service
   return nodemailer.createTransport({
     service: 'gmail',
+    family: 4, // FORCE IPv4
     auth: {
       user: process.env.SMTP_USER || process.env.GMAIL_USER || 'govbridge.otp@gmail.com',
       pass: process.env.SMTP_PASS || process.env.GMAIL_PASS || 'demo_pass'

@@ -12,6 +12,12 @@ const adminUsers = [
     role: 'admin'
   },
   {
+    name: 'Vijayasarathi',
+    email: 'vijayasarthisarathi@gmail.com',
+    password: 'Vijayasarathi@123',
+    role: 'admin'
+  },
+  {
     name: 'Santhana Thanush',
     email: 'santhanathanush2007@gmail.com',
     password: 'Santhana@123',
