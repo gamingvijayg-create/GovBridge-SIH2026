@@ -10,9 +10,10 @@ This repository contains the complete, debugged backend for **GovBridge** powere
 Ensure your `.env` file in the root directory contains your API keys:
 ```env
 GROQ_API_KEY=your_groq_api_key
-MONGO_URI=mongodb+srv://...
+MONGO_URI=mongodb+srv://...  # Strictly required in production (or RENDER). In local dev, falls back to in-memory MongoDB if empty.
 JWT_SECRET=govbridge_secret_2026
 PORT=5000
+SMS_PROVIDER=console  # Options: console (dev only), email, msg91
 ```
 
 ### 2. Start the Server

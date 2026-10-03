@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GovBridge — Selected Startup Sandbox & Milestones</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+              900: '#1e3a8a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #0f172a; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; background: #f8fafc;">
+      <div style="text-align: center;">
+        <div style="font-size: 24px; font-weight: bold; margin-bottom: 8px;">🚀 GovBridge Selected Portal</div>
+        <div style="font-size: 14px; color: #64748b;">Loading authorized workspace...</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const getSelectedToken = () => localStorage.getItem('govbridge_selected_token');
+    const getSelectedUser = () => {
+      try { return JSON.parse(localStorage.getItem('govbridge_selected_user')); }
+      catch(e) { return null; }
+    };
+    const setSelectedAuth = (token, user) => {
+      localStorage.setItem('govbridge_selected_token', token);
+      localStorage.setItem('govbridge_selected_user', JSON.stringify(user));
+    };
+    const clearSelectedAuth = () => {
+      localStorage.removeItem('govbridge_selected_token');
+      localStorage.removeItem('govbridge_selected_user');
+    };
+
+    function SelectedApp() {
+      const [token, setToken] = useState(getSelectedToken());
+      const [user, setUser] = useState(getSelectedUser());
+      const [authChecking, setAuthChecking] = useState(true);
+
+      // Login form state
+      const [phone, setPhone] = useState('');
+      const [password, setPassword] = useState('');
+      const [loginError, setLoginError] = useState('');
+      const [loginLoading, setLoginLoading] = useState(false);
+
+      // Dashboard data state
+      const [pilots, setPilots] = useState([]);
+      const [selectedPilot, setSelectedPilot] = useState(null);
+      const [activeTab, setActiveTab] = useState('daily_updates');
+      const [loadingData, setLoadingData] = useState(false);
+
+      // Milestone & Scale Gate state
+      const [evidenceNotes, setEvidenceNotes] = useState('');
+      const [evidenceUrl, setEvidenceUrl] = useState('');
+      const [activeMilestoneModal, setActiveMilestoneModal] = useState(null);
+      const [scaleDecision, setScaleDecision] = useState('Scale');
+      const [scaleJustification, setScaleJustification] = useState('');
+
+      // Daily Update Form State
+      const [updateTitle, setUpdateTitle] = useState('');
+      const [updateDesc, setUpdateDesc] = useState('');
+      const [updateProgress, setUpdateProgress] = useState(50);
+      const [updateMediaType, setUpdateMediaType] = useState('photo');
+      const [updateMediaUrl, setUpdateMediaUrl] = useState('');
+      const [isPostingUpdate, setIsPostingUpdate] = useState(false);
+      const [adminComments, setAdminComments] = useState({});
+
+      // Expenditure Form State
+      const [expCategory, setExpCategory] = useState('Cloud & Hardware');
+      const [expDesc, setExpDesc] = useState('');
+      const [expAmount, setExpAmount] = useState('');
+      const [expDate, setExpDate] = useState(new Date().toISOString().split('T')[0]);
+      const [expReceiptUrl, setExpReceiptUrl] = useState('');
+      const [isPostingExp, setIsPostingExp] = useState(false);
+
+      // Verify token on mount
+      useEffect(() => {
+        const verifyAuth = async () => {
+          const currentToken = getSelectedToken();
+          if (!currentToken) {
+            setAuthChecking(false);
+            return;
+          }
+          try {
+            const res = await fetch('/api/selected/verify', {
+              headers: { 'Authorization': `Bearer ${currentToken}` }
+            });
+            const data = await res.json();
+            if (data.success && data.user) {
+              setUser(data.user);
+              setToken(currentToken);
+              fetchDashboardData(currentToken);
+            } else {
+              handleLogout(data.error || 'Session expired. Please log in again.');
+            }
+          } catch (err) {
+            handleLogout('Network error checking authorization.');
+          } finally {
+            setAuthChecking(false);
+          }
+        };
+        verifyAuth();
+      }, []);
+
+      const fetchDashboardData = async (activeTok) => {
+        setLoadingData(true);
+        try {
+          const res = await fetch('/api/selected/dashboard', {
+            headers: { 'Authorization': `Bearer ${activeTok || token}` }
+          });
+          const data = await res.json();
+          if (data.success && data.pilots) {
+            setPilots(data.pilots);
+            if (data.pilots.length > 0 && !selectedPilot) {
+              setSelectedPilot(data.pilots[0]);
+            } else if (selectedPilot) {
+              const updated = data.pilots.find(p => p._id === selectedPilot._id);
+              if (updated) setSelectedPilot(updated);
+            }
+          } else if (data.notSelected) {
+            handleLogout('Access restricted: Your startup is not marked as selected.');
+          }
+        } catch (err) {
+          console.error('Error fetching dashboard data:', err);
+        } finally {
+          setLoadingData(false);
+        }
+      };
+
+      const handleLogin = async (e) => {
+        e.preventDefault();
+        setLoginError('');
+        setLoginLoading(true);
+        try {
+          const res = await fetch('/api/selected/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, password })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setSelectedAuth(data.token, data.user);
+            setToken(data.token);
+            setUser(data.user);
+            fetchDashboardData(data.token);
+          } else {
+            if (data.notSelected) {
+              setLoginError('🚫 ' + data.error);
+            } else {
+              setLoginError(data.error || 'Login failed. Please check credentials.');
+            }
+          }
+        } catch (err) {
+          setLoginError('Server error: ' + err.message);
+        } finally {
+          setLoginLoading(false);
+        }
+      };
+
+      const handleLogout = (msg) => {
+        clearSelectedAuth();
+        setToken(null);
+        setUser(null);
+        setSelectedPilot(null);
+        if (msg) alert(msg);
+      };
+
+      // File upload helper
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setUpdateMediaUrl(reader.result);
+            if (file.type.startsWith('video/')) {
+              setUpdateMediaType('video');
+            } else {
+              setUpdateMediaType('photo');
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      // Submit Daily Progress Update
+      const handlePostDailyUpdate = async (e) => {
+        e.preventDefault();
+        if (!selectedPilot) return;
+        if (!updateTitle.trim()) {
+          alert('Please enter an update title');
+          return;
+        }
+
+        setIsPostingUpdate(true);
+        try {
+          const res = await fetch(`/api/pilots/${selectedPilot._id}/daily-updates`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              title: updateTitle,
+              description: updateDesc,
+              progressPercentage: Number(updateProgress),
+              mediaType: updateMediaType,
+              mediaUrl: updateMediaUrl,
+              uploadedBy: user && user.name ? `${user.name} (${selectedPilot.startupName})` : selectedPilot.startupName
+            })
+          });
+          const json = await res.json();
+          if (json.success) {
+            alert('✅ Daily progress update posted successfully!');
+            setUpdateTitle('');
+            setUpdateDesc('');
+            setUpdateMediaUrl('');
+            fetchDashboardData(token);
+          } else {
+            alert('Error: ' + json.error);
+          }
+        } catch(err) { alert(err.message); }
+        finally { setIsPostingUpdate(false); }
+      };
+
+      // Log Team Expenditure
+      const handlePostExpenditure = async (e) => {
+        e.preventDefault();
+        if (!selectedPilot) return;
+        if (!expDesc.trim() || !expAmount) {
+          alert('Please provide expense description and amount');
+          return;
+        }
+
+        setIsPostingExp(true);
+        try {
+          const res = await fetch(`/api/pilots/${selectedPilot._id}/expenditures`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              category: expCategory,
+              description: expDesc,
+              amount: Number(expAmount),
+              spendDate: expDate,
+              receiptUrl: expReceiptUrl
+            })
+          });
+          const json = await res.json();
+          if (json.success) {
+            alert('✅ Expenditure item logged successfully!');
+            setExpDesc('');
+            setExpAmount('');
+            setExpReceiptUrl('');
+            fetchDashboardData(token);
+          } else {
+            alert('Error: ' + json.error);
+          }
+        } catch(err) { alert(err.message); }
+        finally { setIsPostingExp(false); }
+      };
+
+      const handleRequestPayment = async (milestoneId) => {
+        if (!selectedPilot) return;
+        try {
+          const res = await fetch(`/api/pilots/${selectedPilot._id}/milestones/${milestoneId}/request-payment`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ evidenceNotes, evidenceUrl })
+          });
+          const json = await res.json();
+          if (json.success) {
+            alert('✅ Payment Request submitted to Department Admin!');
+            setActiveMilestoneModal(null);
+            setEvidenceNotes('');
+            setEvidenceUrl('');
+            fetchDashboardData(token);
+          } else {
+            alert('Error: ' + json.error);
+          }
+        } catch(err) { alert(err.message); }
+      };
+
+      const handleScaleDecisionSubmit = async () => {
+        if (!selectedPilot) return;
+        try {
+          const res = await fetch(`/api/pilots/${selectedPilot._id}/scale-up-decision`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              decision: scaleDecision,
+              justification: scaleJustification,
+              validatorNotes: 'Committee and Selected Startup Review submitted.'
+            })
+          });
+          const json = await res.json();
+          if (json.success) {
+            alert(`🚀 Scale-Up Gate Decision recorded: ${scaleDecision}!`);
+            fetchDashboardData(token);
+          } else {
+            alert('Error: ' + json.error);
+          }
+        } catch(err) { alert(err.message); }
+      };
+
+      if (authChecking) {
+        return (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center font-bold text-slate-600">Verifying security token...</div>
+          </div>
+        );
+      }
+
+      // If not authenticated or not selected, display dedicated Selected Login
+      if (!token || !user) {
+        return (
+          <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+              <div className="text-center">
+                <div className="inline-flex w-14 h-14 rounded-2xl bg-emerald-600 text-white items-center justify-center text-3xl shadow-lg mb-4">
+                  🏆
+                </div>
+                <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  Selected Startup Portal
+                </h2>
+                <p className="mt-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+                  Milestone Tracking & Live Sandbox Workspace
+                </p>
+                <div className="mt-3 inline-block bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-1 rounded-full font-bold">
+                  🔒 Access Restricted: <code className="text-amber-900">isSelected = true</code> Required
+                </div>
+              </div>
+
+              <div className="mt-8 bg-white py-8 px-6 shadow-xl border border-slate-200 rounded-3xl sm:px-10">
+                {loginError && (
+                  <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-xl text-xs font-semibold">
+                    {loginError}
+                  </div>
+                )}
+
+                <form onSubmit={handleLogin} className="space-y-5 text-xs font-bold text-slate-700">
+                  <div>
+                    <label>Registered Mobile Phone Number (10 Digits)</label>
+                    <div className="mt-1 flex rounded-xl border border-slate-200 overflow-hidden focus-within:border-emerald-600">
+                      <span className="inline-flex items-center px-3 bg-slate-100 text-slate-500 text-xs font-bold">+91</span>
+                      <input
+                        type="tel"
+                        required
+                        maxLength="10"
+                        placeholder="9876543210"
+                        className="w-full p-3 outline-none"
+                        value={phone}
+                        onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label>Password</label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-emerald-600"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loginLoading}
+                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-emerald-600/20 transition flex justify-center items-center gap-2"
+                  >
+                    {loginLoading ? 'Authenticating...' : 'Access Selected Sandbox →'}
+                  </button>
+                </form>
+
+                <div className="mt-6 pt-6 border-t border-slate-100 flex justify-between text-xs font-semibold">
+                  <a href="/" className="text-slate-500 hover:text-slate-800">← Back to Main Home</a>
+                  <a href="/#login" className="text-blue-600 hover:underline">General Login</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Calculations for Financial Summary
+      const allocatedBudget = selectedPilot ? (selectedPilot.allocatedBudget || 5000000) : 5000000;
+      const totalPaid = selectedPilot ? (selectedPilot.milestones || []).filter(m => m.paymentStatus === 'Paid').reduce((s, m) => s + (m.amount || 0), 0) : 0;
+      const totalRequested = selectedPilot ? (selectedPilot.milestones || []).filter(m => m.paymentStatus === 'Requested').reduce((s, m) => s + (m.amount || 0), 0) : 0;
+      const remainingBalance = allocatedBudget - totalPaid;
+      const totalSpent = selectedPilot ? (selectedPilot.expenditures || []).reduce((s, e) => s + (e.amount || 0), 0) : 0;
+
+      return (
+        <div className="min-h-screen flex flex-col justify-between">
+          <div>
+            {/* Top Navigation */}
+            <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                <a href="/selected" className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border-2 border-emerald-600 bg-emerald-50 flex items-center justify-center font-bold text-emerald-700 text-lg shadow-sm">
+                    🏆
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <span className="font-extrabold text-2xl tracking-tight text-slate-900">GovBridge</span>
+                      <span className="font-bold text-2xl tracking-tight text-emerald-600">SELECTED</span>
+                    </div>
+                    <div className="text-[10px] uppercase font-bold tracking-widest text-slate-500 -mt-1">
+                      Milestone Execution & Sandbox Environment
+                    </div>
+                  </div>
+                </a>
+
+                <div className="flex items-center gap-4">
+                  <a href="/" className="hidden sm:inline text-xs font-bold text-slate-600 hover:text-slate-900">
+                    Portal Home
+                  </a>
+                  <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold">
+                    ✓ Selected Partner: {user.name} ({user.phone || user.email})
+                  </div>
+                  <button
+                    onClick={() => handleLogout()}
+                    className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl transition"
+                  >
+                    Logout ✕
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* Main Content Area: Milestone and Sandbox */}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+              {/* Header Banner */}
+              <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+                <div className="relative z-10 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30 uppercase tracking-widest">
+                      SIH 2026 End-to-End Lifecycle
+                    </span>
+                    <span className="text-xs text-slate-400">GovBridge Sandbox & Financial Control</span>
+                  </div>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                    Pilot, Daily Sandbox Progress & Financial Gate Manager
+                  </h1>
+                  <p className="text-slate-300 max-w-3xl text-sm leading-relaxed">
+                    Track live running processes of approved companies with daily photo/video proof, monitor admin review statuses, and inspect allocated budgets, payments disbursed, and expenditure breakdowns.
+                  </p>
+                </div>
+              </div>
+
+              {/* 6-Team Approved Companies Matrix */}
+              <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800">
+                      🏛️ Approved Pilot Teams ({pilots.length} Active Sandboxes)
+                    </h3>
+                    <p className="text-xs text-slate-500">Select any team to view their daily progress updates, photo evidence, and payment balances.</p>
+                  </div>
+                  <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full border border-blue-200">
+                    {pilots.length} Active Teams
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pilots.map((p, idx) => {
+                    const isSelected = selectedPilot && selectedPilot._id === p._id;
+                    const pPaid = (p.milestones || []).filter(m => m.paymentStatus === 'Paid').reduce((s, m) => s + (m.amount || 0), 0);
+                    const pAlloc = p.allocatedBudget || 5000000;
+                    const pBal = pAlloc - pPaid;
+                    const pUnreviewed = (p.dailyUpdates || []).filter(u => !u.adminReviewed).length;
+
+                    return (
+                      <div
+                        key={p._id}
+                        onClick={() => setSelectedPilot(p)}
+                        className={`p-4 rounded-2xl border-2 cursor-pointer transition flex flex-col justify-between space-y-3 ${
+                          isSelected
+                            ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-500/20'
+                            : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Team #{idx + 1}</span>
+                            <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{p.startupName}</h4>
+                            <div className="text-xs text-slate-500 truncate max-w-[200px]">{p.department}</div>
+                          </div>
+                          {pUnreviewed > 0 ? (
+                            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300 animate-pulse">
+                              ⏳ {pUnreviewed} Pending
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                              ✅ Up to date
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-100 p-2.5 rounded-xl">
+                          <div>
+                            <div className="text-slate-400 font-semibold">Disbursed</div>
+                            <div className="font-extrabold text-emerald-700">₹{(pPaid / 100000).toFixed(1)} L</div>
+                          </div>
+                          <div>
+                            <div className="text-slate-400 font-semibold">Remaining</div>
+                            <div className="font-extrabold text-blue-700">₹{(pBal / 100000).toFixed(1)} L</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {selectedPilot && (
+                <div className="space-y-8">
+                  {/* Selected Pilot Header & Quick Financial Summary */}
+                  <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6 rounded-3xl text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div>
+                      <div className="text-xs font-bold uppercase text-blue-400 tracking-wider">Active Sandbox Selected</div>
+                      <h2 className="text-2xl font-extrabold">{selectedPilot.startupName}</h2>
+                      <p className="text-xs text-slate-300 mt-1">{selectedPilot.title}</p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 text-center">
+                      <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Total Budget</div>
+                        <div className="text-sm font-extrabold text-white">₹{allocatedBudget.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-emerald-500/20 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-emerald-400/30">
+                        <div className="text-[10px] uppercase text-emerald-300 font-bold">Disbursed</div>
+                        <div className="text-sm font-extrabold text-emerald-400">₹{totalPaid.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-blue-500/20 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-blue-400/30">
+                        <div className="text-[10px] uppercase text-blue-300 font-bold">Balance Remaining</div>
+                        <div className="text-sm font-extrabold text-blue-400">₹{remainingBalance.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Navigation Tabs */}
+                  <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                    {[
+                      { id: 'daily_updates', label: `📹 Daily Sandbox Progress (${(selectedPilot.dailyUpdates || []).length})`, icon: '⚡' },
+                      { id: 'payment', label: '💳 Payment Details & Balance', icon: '💰' },
+                      { id: 'expenditures', label: `📊 Payment History & Spend Details (${(selectedPilot.expenditures || []).length})`, icon: '📜' },
+                      { id: 'sandbox', label: '🧪 Sandbox Specification', icon: '📝' },
+                      { id: 'contract', label: '📋 Milestone Contract', icon: '📄' },
+                      { id: 'scale_gate', label: '🚀 Scale-Up Decision Gate', icon: '🏆' }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 ${
+                          activeTab === tab.id
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span>{tab.icon}</span> {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* TAB 1: DAILY PROGRESS UPDATES */}
+                  {activeTab === 'daily_updates' && (
+                    <div className="space-y-8">
+                      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                        <div className="border-b border-slate-100 pb-4">
+                          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <span>📹</span> Post Daily Sandbox Progress (Photo/Video Evidence)
+                          </h3>
+                          <p className="text-xs text-slate-500">
+                            Approved companies must upload daily progress notes with photo or video proof.
+                          </p>
+                        </div>
+
+                        <form onSubmit={handlePostDailyUpdate} className="space-y-4 text-xs">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="font-bold text-slate-700">Update Title</label>
+                              <input 
+                                type="text" 
+                                required
+                                className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                                placeholder="e.g. Deployed Sensor Node #12"
+                                value={updateTitle}
+                                onChange={e=>setUpdateTitle(e.target.value)}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="font-bold text-slate-700">Milestone Progress (%)</label>
+                              <div className="flex items-center gap-3 mt-1">
+                                <input 
+                                  type="range" 
+                                  min="0" 
+                                  max="100"
+                                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                  value={updateProgress}
+                                  onChange={e=>setUpdateProgress(e.target.value)}
+                                />
+                                <span className="font-extrabold text-blue-600 text-sm w-12 text-right">{updateProgress}%</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="font-bold text-slate-700">Detailed Daily Progress Notes</label>
+                            <textarea 
+                              rows="3"
+                              className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                              placeholder="Describe field operations conducted, test results..."
+                              value={updateDesc}
+                              onChange={e=>setUpdateDesc(e.target.value)}
+                            ></textarea>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="font-bold text-slate-700">Attach Photo / Video Proof</label>
+                              <input 
+                                type="file" 
+                                accept="image/*,video/*"
+                                onChange={handleFileUpload}
+                                className="w-full mt-1 p-2.5 border border-slate-200 rounded-xl bg-slate-50"
+                              />
+                            </div>
+                            <div>
+                              <label className="font-bold text-slate-700">Media URL Link (Alternative)</label>
+                              <input 
+                                type="url" 
+                                placeholder="https://..."
+                                value={updateMediaUrl}
+                                onChange={e=>setUpdateMediaUrl(e.target.value)}
+                                className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                              />
+                            </div>
+                          </div>
+
+                          <button 
+                            type="submit" 
+                            disabled={isPostingUpdate}
+                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition"
+                          >
+                            {isPostingUpdate ? 'Submitting...' : '🚀 Submit Progress Update'}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Display Feed */}
+                      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-4">
+                        <h3 className="text-lg font-extrabold text-slate-900">
+                          📜 Live Feed: Daily Updates from {selectedPilot.startupName}
+                        </h3>
+                        {(selectedPilot.dailyUpdates || []).length === 0 ? (
+                          <div className="text-center text-slate-400 py-8 text-xs">No updates logged yet.</div>
+                        ) : (
+                          <div className="space-y-4">
+                            {(selectedPilot.dailyUpdates || []).map((u, i) => (
+                              <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                                <div className="flex justify-between items-center">
+                                  <h4 className="font-bold text-slate-900 text-sm">{u.title}</h4>
+                                  <span className="text-slate-400">{new Date(u.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <p className="text-slate-600">{u.description}</p>
+                                {u.mediaUrl && (
+                                  <div className="pt-2">
+                                    {u.mediaType === 'video' ? (
+                                      <video src={u.mediaUrl} controls className="max-h-60 rounded-xl" />
+                                    ) : (
+                                      <img src={u.mediaUrl} alt="proof" className="max-h-60 rounded-xl object-cover" />
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: PAYMENT DETAILS */}
+                  {activeTab === 'payment' && (
+                    <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                      <div className="border-b border-slate-100 pb-4">
+                        <h2 className="text-xl font-bold text-slate-900">💳 Milestone Payment Gate & Balance</h2>
+                        <p className="text-xs text-slate-500">Track milestone status and request fund disbursement</p>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                              <th className="p-3">Milestone</th>
+                              <th className="p-3">Deliverable</th>
+                              <th className="p-3">Amount</th>
+                              <th className="p-3">Status</th>
+                              <th className="p-3">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
+                            {(selectedPilot.milestones || []).map((ms) => (
+                              <tr key={ms._id} className="hover:bg-slate-50">
+                                <td className="p-3 font-bold text-blue-700">{ms.milestoneCode}</td>
+                                <td className="p-3 font-semibold text-slate-900">{ms.title}</td>
+                                <td className="p-3 font-extrabold text-slate-900">₹{(ms.amount || 0).toLocaleString()}</td>
+                                <td className="p-3">
+                                  <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                    ms.paymentStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
+                                    ms.paymentStatus === 'Requested' ? 'bg-amber-100 text-amber-800' :
+                                    'bg-slate-100 text-slate-600'
+                                  }`}>
+                                    {ms.paymentStatus || 'Pending'}
+                                  </span>
+                                </td>
+                                <td className="p-3">
+                                  {ms.paymentStatus !== 'Paid' && ms.paymentStatus !== 'Requested' && (
+                                    <button
+                                      onClick={() => setActiveMilestoneModal(ms)}
+                                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[11px]"
+                                    >
+                                      Request Payment
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: EXPENDITURES */}
+                  {activeTab === 'expenditures' && (
+                    <div className="space-y-8">
+                      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                        <div className="border-b border-slate-100 pb-4">
+                          <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <span>📊</span> Log Team Expenditure
+                          </h3>
+                          <p className="text-xs text-slate-500">Record equipment, cloud compute, and field expenses.</p>
+                        </div>
+
+                        <form onSubmit={handlePostExpenditure} className="space-y-4 text-xs">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="font-bold text-slate-700">Expense Category</label>
+                              <select 
+                                className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600 bg-white"
+                                value={expCategory}
+                                onChange={e=>setExpCategory(e.target.value)}
+                              >
+                                <option value="Cloud & Hardware">Cloud & Hardware</option>
+                                <option value="R&D & AI APIs">R&D & AI APIs</option>
+                                <option value="Field Testing & Operations">Field Testing & Operations</option>
+                                <option value="Team Salaries">Team Salaries</option>
+                                <option value="Certifications & Audits">Certifications & Audits</option>
+                                <option value="Misc">Misc Expenses</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="font-bold text-slate-700">Description</label>
+                              <input 
+                                type="text"
+                                required
+                                className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                                placeholder="e.g. Server hosting fees"
+                                value={expDesc}
+                                onChange={e=>setExpDesc(e.target.value)}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="font-bold text-slate-700">Amount Spent (INR)</label>
+                              <input 
+                                type="number"
+                                required
+                                className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                                placeholder="e.g. 50000"
+                                value={expAmount}
+                                onChange={e=>setExpAmount(e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <button 
+                            type="submit"
+                            disabled={isPostingExp}
+                            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition"
+                          >
+                            {isPostingExp ? 'Saving...' : '💾 Log Expenditure Record'}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Ledger */}
+                      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-4">
+                        <h3 className="text-lg font-extrabold text-slate-900">📜 Expenditure Ledger</h3>
+                        {(selectedPilot.expenditures || []).length === 0 ? (
+                          <div className="text-center text-slate-400 py-6 text-xs">No records yet.</div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                                  <th className="p-3">Category</th>
+                                  <th className="p-3">Description</th>
+                                  <th className="p-3">Date</th>
+                                  <th className="p-3">Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
+                                {(selectedPilot.expenditures || []).map((exp) => (
+                                  <tr key={exp._id} className="hover:bg-slate-50">
+                                    <td className="p-3">{exp.category}</td>
+                                    <td className="p-3 font-semibold text-slate-900">{exp.description}</td>
+                                    <td className="p-3">{exp.spendDate}</td>
+                                    <td className="p-3 font-extrabold text-slate-900">₹{(exp.amount || 0).toLocaleString()}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 4: SANDBOX SPECIFICATION */}
+                  {activeTab === 'sandbox' && (
+                    <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                      <h2 className="text-xl font-bold text-slate-900">🧪 Sandbox Specification</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-2">
+                          <div className="font-bold text-slate-800 text-sm">🎯 Outcome Objective</div>
+                          <p className="text-slate-600">{selectedPilot.outcomeObjective || 'Outcome-driven deployment in live sandbox.'}</p>
+                        </div>
+                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-2">
+                          <div className="font-bold text-slate-800 text-sm">📊 Target KPIs</div>
+                          <p className="text-slate-600">{selectedPilot.baselineTargetKPIs || 'Performance baselines defined.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 5: MILESTONE CONTRACT */}
+                  {activeTab === 'contract' && (
+                    <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                      <h2 className="text-xl font-bold text-slate-900">📋 Milestone Contract</h2>
+                      <div className="space-y-4 text-xs">
+                        {(selectedPilot.milestones || []).map((ms) => (
+                          <div key={ms._id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                            <div className="flex justify-between font-bold text-slate-900">
+                              <span>{ms.milestoneCode}: {ms.title}</span>
+                              <span>₹{(ms.amount || 0).toLocaleString()}</span>
+                            </div>
+                            <p className="text-slate-600">{ms.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 6: SCALE-UP GATE */}
+                  {activeTab === 'scale_gate' && (
+                    <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                      <h2 className="text-xl font-bold text-slate-900">🚀 Scale-Up Decision Gate</h2>
+                      <p className="text-xs text-slate-500">Government transition evaluation towards Pan-India GeM Direct Procurement.</p>
+                      
+                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 text-xs">
+                        <label className="font-bold text-slate-800">Proposal Justification</label>
+                        <textarea
+                          rows="3"
+                          className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                          value={scaleJustification}
+                          onChange={e=>setScaleJustification(e.target.value)}
+                          placeholder="Provide summary of outcome validation..."
+                        ></textarea>
+                        <button
+                          onClick={handleScaleDecisionSubmit}
+                          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md"
+                        >
+                          Submit Scale-Up Review Gate
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </main>
+          </div>
+
+          {/* Modal for Payment Request */}
+          {activeMilestoneModal && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-8 max-w-lg w-full space-y-6 relative">
+                <button onClick={()=>setActiveMilestoneModal(null)} className="absolute top-6 right-6 font-bold text-slate-400">✕</button>
+                <h3 className="text-lg font-bold text-slate-900">Request Payment: {activeMilestoneModal.title}</h3>
+                
+                <div className="text-xs space-y-3">
+                  <div>
+                    <label className="font-semibold text-slate-700">Evidence Proof Notes / Demo Link</label>
+                    <textarea 
+                      className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                      rows="3"
+                      value={evidenceNotes}
+                      onChange={e=>setEvidenceNotes(e.target.value)}
+                      placeholder="Describe KPI metrics verified..."
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700">Evidence File URL (Optional)</label>
+                    <input 
+                      type="text" 
+                      className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600"
+                      value={evidenceUrl}
+                      onChange={e=>setEvidenceUrl(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-2">
+                  <button onClick={()=>handleRequestPayment(activeMilestoneModal._id)} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md">
+                    Submit Payment Package
+                  </button>
+                  <button onClick={()=>setActiveMilestoneModal(null)} className="px-5 py-3 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer className="bg-slate-900 text-slate-400 py-10 border-t border-slate-800 mt-20">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-2 text-xs">
+              <div className="font-bold text-white text-sm">GovBridge — Selected Startup Acceleration Portal</div>
+              <p>Government of India — Smart India Hackathon 2026 Procurement Bridge.</p>
+              <div className="text-slate-600 pt-2">© 2026 GovBridge. Protected Workspace.</div>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    const rootElement = document.getElementById('root');
+    if (ReactDOM.createRoot) {
+      ReactDOM.createRoot(rootElement).render(<SelectedApp />);
+    } else if (ReactDOM.render) {
+      ReactDOM.render(<SelectedApp />, rootElement);
+    }
+  </script>
+</body>
+</html>

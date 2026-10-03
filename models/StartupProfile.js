@@ -81,6 +81,10 @@ const startupProfileSchema = new mongoose.Schema({
     enum: ['pending', 'eligible', 'shortlisted', 'rejected'],
     default: 'pending'
   },
+  isSelected: {
+    type: Boolean,
+    default: false
+  },
   vectorEmbedding: {
     type: [Number],
     default: []

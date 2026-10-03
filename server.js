@@ -22,6 +22,7 @@ const problemStatementRoutes = require('./routes/problemStatements');
 const adminRoutes = require('./routes/admin');
 const extractionRoutes = require('./routes/extraction');
 const pilotRoutes = require('./routes/pilots');
+const selectedRoutes = require('./routes/selected');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -41,6 +42,7 @@ app.use('/api/problem-statements', problemStatementRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/extraction', extractionRoutes);
 app.use('/api/pilots', pilotRoutes);
+app.use('/api/selected', selectedRoutes);
 
 // Health check API endpoint
 app.get('/api/health', (req, res) => {
@@ -51,6 +53,11 @@ app.get('/api/health', (req, res) => {
     database: dbStatus,
     timestamp: new Date().toISOString()
   });
+});
+
+// Serve Selected Startup page
+app.get('/selected', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'selected.html'));
 });
 
 // Single Page Application (SPA) Fallback
@@ -121,13 +128,14 @@ async function autoSeedData() {
 
 // Database Connection Manager (Cloud Atlas with Local Memory Fallback)
 async function connectDatabase() {
-  const cloudUri = process.env.MONGO_URI || "mongodb+srv://vijayasarthisarathi_db_user:oeYO0Orrt6s3c5H1@cluster0.y3sfoll.mongodb.net/govbridge?retryWrites=true&w=majority";
+  const cloudUri = process.env.MONGO_URI;
 
   if (!cloudUri) {
-    console.error('❌ MONGO_URI is not set!');
     if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
-      process.exit(1); // production-la fake DB use pannadhu
+      console.error('❌ FATAL: MONGO_URI is not set in production! Server cannot start.');
+      process.exit(1);
     }
+    console.warn('⚠️ MONGO_URI not set. Development mode: falling back to in-memory MongoDB.');
   } else {
     try {
       console.log('Connecting to MongoDB Atlas Cloud...');

@@ -1,7 +1,13 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'govbridge_secret_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('❌ JWT_SECRET is not set!');
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+}
 
 // Middleware to verify JWT token
 const verifyToken = async (req, res, next) => {
@@ -36,8 +42,21 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+// Middleware to enforce Selected Startup access
+const requireSelected = (req, res, next) => {
+  if (!req.user || (!req.user.isSelected && req.user.role !== 'admin')) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access restricted: Only selected startups are authorized to access this section.',
+      notSelected: true
+    });
+  }
+  next();
+};
+
 module.exports = {
   verifyToken,
   requireAdmin,
+  requireSelected,
   JWT_SECRET
 };

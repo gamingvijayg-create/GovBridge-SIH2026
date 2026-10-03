@@ -161,4 +161,54 @@ router.delete('/shortlisted/:id', async (req, res) => {
   }
 });
 
+// PUT /api/admin/startups/:id/selected - Mark startup/user as isSelected (true or false)
+router.put('/startups/:id/selected', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isSelected } = req.body;
+    const selectedBool = isSelected === true || isSelected === 'true';
+
+    // Update in User model if exists
+    const userUpdated = await User.findByIdAndUpdate(id, { isSelected: selectedBool }, { new: true });
+
+    // Update in StartupProfile model if exists
+    const profileUpdated = await StartupProfile.findByIdAndUpdate(id, { isSelected: selectedBool }, { new: true });
+
+    // Update in Startup model if exists
+    const StartupModel = require('../models/Startup');
+    const startupUpdated = await StartupModel.findByIdAndUpdate(id, { isSelected: selectedBool }, { new: true });
+
+    if (!userUpdated && !profileUpdated && !startupUpdated) {
+      return res.status(404).json({ success: false, error: 'Startup or User record not found' });
+    }
+
+    res.json({
+      success: true,
+      message: `Startup status updated to isSelected = ${selectedBool}`,
+      data: {
+        userId: userUpdated ? userUpdated._id : null,
+        profileId: profileUpdated ? profileUpdated._id : null,
+        isSelected: selectedBool
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/startups/selected - List all selected startups
+router.get('/startups/selected', async (req, res) => {
+  try {
+    const selectedUsers = await User.find({ isSelected: true }).select('-password');
+    const selectedProfiles = await StartupProfile.find({ isSelected: true });
+    res.json({
+      success: true,
+      users: selectedUsers,
+      profiles: selectedProfiles
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

@@ -13,6 +13,17 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
+  phone: {
+    type: String,
+    unique: true,
+    sparse: true,
+    validate: {
+      validator: function(v) {
+        return /^[6-9]\d{9}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid Indian mobile number`
+    }
+  },
   password: {
     type: String,
     required: true
@@ -21,6 +32,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['startup', 'admin'],
     default: 'startup'
+  },
+  isSelected: {
+    type: Boolean,
+    default: false
   },
   createdAt: {
     type: Date,

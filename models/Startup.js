@@ -15,6 +15,15 @@ const startupSchema = new mongoose.Schema(
     eligibilityScore: { type: Number, default: 0 },
     matchedSchemes: [{ type: String }],
 
+    phone: {
+      type: String,
+      sparse: true,
+      index: true
+    },
+    isSelected: {
+      type: Boolean,
+      default: false
+    },
     status: {
       type: String,
       enum: ['pending', 'under_review', 'shortlisted', 'rejected'],
