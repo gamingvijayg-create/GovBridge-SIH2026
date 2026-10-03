@@ -448,6 +448,9 @@
       const [isEmailVerified, setIsEmailVerified] = useState(false);
       const [emailOtpInput, setEmailOtpInput] = useState('');
       const [showEmailOtpBox, setShowEmailOtpBox] = useState(false);
+      const [otpSending, setOtpSending] = useState(false);
+      const [otpVerifying, setOtpVerifying] = useState(false);
+      const [otpMessage, setOtpMessage] = useState('');
 
       const [file, setFile] = useState(null);
       const [teamMembers, setTeamMembers] = useState([
@@ -464,40 +467,67 @@
 
       // Email OTP Verification Handlers
       const handleSendEmailOtp = async () => {
-        if (!formData.email.trim()) {
-          alert('Please enter a valid Official Email Address first');
+        let targetEmail = (formData.email || '').trim();
+        // Auto-detect if user typed their email in the Company Name box
+        if (!targetEmail && formData.startupName && /^\S+@\S+\.\S+$/.test(formData.startupName.trim())) {
+          targetEmail = formData.startupName.trim();
+          setFormData(prev => ({ ...prev, email: targetEmail }));
+        }
+
+        if (!targetEmail || !/^\S+@\S+\.\S+$/.test(targetEmail)) {
+          alert('Please enter a valid Official Email Address (e.g. founder@yourstartup.com)');
           return;
         }
+
+        setOtpSending(true);
+        setOtpMessage('');
         try {
           const res = await fetch('/api/auth/send-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: formData.email })
+            body: JSON.stringify({ email: targetEmail.toLowerCase(), purpose: 'registration' })
           });
           const json = await res.json();
           if (json.success) {
             setShowEmailOtpBox(true);
             setEmailOtpInput('');
-            alert('📧 Verification OTP code dispatched to your Email Inbox (' + formData.email + '). Please check your inbox and enter the 6-digit code below.');
-          } else { alert('Error: ' + json.error); }
-        } catch(err) { alert(err.message); }
+            setOtpMessage('✉️ 6-digit OTP code sent to ' + targetEmail + '. Check your inbox!');
+          } else {
+            alert('Error sending OTP: ' + (json.error || 'Failed to dispatch OTP'));
+          }
+        } catch(err) {
+          alert('Network Error: ' + err.message);
+        } finally {
+          setOtpSending(false);
+        }
       };
 
       const handleVerifyEmailOtp = async () => {
-        if (!emailOtpInput.trim()) { alert('Please enter 6-digit OTP code'); return; }
+        const targetEmail = (formData.email || '').trim().toLowerCase();
+        if (!emailOtpInput.trim()) {
+          alert('Please enter the 6-digit OTP code received in your email');
+          return;
+        }
+        setOtpVerifying(true);
         try {
           const res = await fetch('/api/auth/verify-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: formData.email, otp: emailOtpInput })
+            body: JSON.stringify({ email: targetEmail, otp: emailOtpInput.trim(), purpose: 'registration' })
           });
           const json = await res.json();
           if (json.success) {
             setIsEmailVerified(true);
             setShowEmailOtpBox(false);
-            alert('✅ Email Address Verified Successfully!');
-          } else { alert('OTP Verification Error: ' + json.error); }
-        } catch(err) { alert(err.message); }
+            setOtpMessage('✅ Official Email Address Verified Successfully!');
+          } else {
+            alert('OTP Verification Error: ' + (json.error || 'Invalid OTP code'));
+          }
+        } catch(err) {
+          alert('Verification Error: ' + err.message);
+        } finally {
+          setOtpVerifying(false);
+        }
       };
 
       const handleSubmitEvaluation = async () => {
@@ -637,9 +667,28 @@
                     )}
                   </div>
 
+                  {formData.startupName && formData.startupName.includes('@') && !formData.email && (
+                    <div className="text-[11px] text-blue-700 bg-blue-100/70 p-2 rounded-lg flex items-center justify-between">
+                      <span>Found email in Company Name: <b>{formData.startupName}</b></span>
+                      <button 
+                        type="button" 
+                        onClick={()=>setFormData({...formData, email: formData.startupName})} 
+                        className="font-bold text-blue-800 underline hover:text-blue-950"
+                      >
+                        Copy to Email Field ↵
+                      </button>
+                    </div>
+                  )}
+
+                  {otpMessage && (
+                    <div className="text-xs font-semibold p-3 rounded-xl bg-blue-100 text-blue-900 border border-blue-200 animate-fadeIn">
+                      {otpMessage}
+                    </div>
+                  )}
+
                   <div className="flex gap-3">
                     <input 
-                      type="email"
+                      type="email" 
                       required
                       disabled={isEmailVerified}
                       className="flex-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600 bg-white"
@@ -650,34 +699,49 @@
                     {!isEmailVerified && (
                       <button 
                         type="button"
+                        disabled={otpSending}
                         onClick={handleSendEmailOtp}
-                        className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm whitespace-nowrap"
+                        className="px-5 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-sm whitespace-nowrap transition"
                       >
-                        Send Email OTP 📧
+                        {otpSending ? 'Sending Code... ⏳' : 'Send Email OTP 📧'}
                       </button>
                     )}
                   </div>
 
                   {showEmailOtpBox && !isEmailVerified && (
-                    <div className="bg-white p-4 rounded-xl border border-blue-300 flex items-center gap-3 animate-fadeIn">
-                      <div className="text-[11px] text-slate-600">
-                        Enter 6-digit OTP code sent to your email:
+                    <div className="bg-white p-4 rounded-xl border-2 border-blue-400 space-y-3 shadow-md animate-fadeIn">
+                      <div className="text-xs font-bold text-slate-700">
+                        📩 Enter 6-Digit Verification Code sent to <u>{formData.email}</u>:
                       </div>
-                      <input 
-                        type="text"
-                        maxLength="6"
-                        className="w-28 p-2 border border-slate-300 rounded-lg text-center font-bold tracking-widest outline-none focus:border-blue-600"
-                        placeholder="123456"
-                        value={emailOtpInput}
-                        onChange={e=>setEmailOtpInput(e.target.value)}
-                      />
-                      <button 
-                        type="button"
-                        onClick={handleVerifyEmailOtp}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg"
-                      >
-                        Verify OTP
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="text"
+                          maxLength="6"
+                          className="w-36 p-3 border border-slate-300 rounded-xl text-center font-bold tracking-widest text-lg outline-none focus:border-blue-600 bg-slate-50"
+                          placeholder="123456"
+                          value={emailOtpInput}
+                          onChange={e=>setEmailOtpInput(e.target.value.replace(/\D/g, ''))}
+                        />
+                        <button 
+                          type="button"
+                          disabled={otpVerifying}
+                          onClick={handleVerifyEmailOtp}
+                          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-sm transition"
+                        >
+                          {otpVerifying ? 'Verifying... ⏳' : '✓ Verify Code'}
+                        </button>
+                        <button 
+                          type="button"
+                          disabled={otpSending}
+                          onClick={handleSendEmailOtp}
+                          className="text-xs font-semibold text-blue-600 hover:underline px-2"
+                        >
+                          Resend Code
+                        </button>
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        * Code expires in 5 minutes. Please check your Gmail primary or spam folder.
+                      </div>
                     </div>
                   )}
                 </div>
