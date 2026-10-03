@@ -7,38 +7,38 @@
 const adminUsers = [
   {
     name: 'Vijayasarathi',
-    email: 'vijayasarathi@govbridge.gov.in',
+    email: 'vijayasarathisarathi@gmail.com',
     password: 'Vijayasarathi@123',
     role: 'admin'
   },
   {
+    name: 'Santhana Thanush',
+    email: 'santhanathanush2007@gmail.com',
+    password: 'Santhana@123',
+    role: 'admin'
+  },
+  {
     name: 'Rasika Sree',
-    email: 'rasikasree@govbridge.gov.in',
+    email: 'rasikasree@gmail.com',
     password: 'Rasika@123',
     role: 'admin'
   },
   {
     name: 'Shanthossni',
-    email: 'shanthossni@govbridge.gov.in',
+    email: 'shanthossni@gmail.com',
     password: 'Shanthossni@123',
     role: 'admin'
   },
   {
     name: 'Sanjay',
-    email: 'sanjay@govbridge.gov.in',
+    email: 'sanjay@gmail.com',
     password: 'Sanjay@123',
     role: 'admin'
   },
   {
     name: 'Vishal',
-    email: 'vishal@govbridge.gov.in',
+    email: 'vishal@gmail.com',
     password: 'Vishal@123',
-    role: 'admin'
-  },
-  {
-    name: 'Santhana Thanush',
-    email: 'santhanathanush@govbridge.gov.in',
-    password: 'Santhana@123',
     role: 'admin'
   },
   {

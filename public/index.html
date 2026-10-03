@@ -692,7 +692,7 @@
                       required
                       disabled={isEmailVerified}
                       className="flex-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-blue-600 bg-white"
-                      placeholder="founder@yourstartup.com"
+                      placeholder="e.g. vijayasarathisarathi@gmail.com"
                       value={formData.email}
                       onChange={e=>setFormData({...formData, email: e.target.value})}
                     />
@@ -708,40 +708,56 @@
                     )}
                   </div>
 
-                  {showEmailOtpBox && !isEmailVerified && (
-                    <div className="bg-white p-4 rounded-xl border-2 border-blue-400 space-y-3 shadow-md animate-fadeIn">
-                      <div className="text-xs font-bold text-slate-700">
-                        📩 Enter 6-Digit Verification Code sent to <u>{formData.email}</u>:
+                  {/* OTP Enter Box directly underneath Email Box */}
+                  {!isEmailVerified && (
+                    <div className="bg-white p-4 rounded-2xl border-2 border-blue-200 space-y-3 shadow-sm mt-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                          <span>🔢</span> Enter 6-Digit Email OTP Code:
+                        </label>
+                        <span className="text-[11px] text-slate-500 font-semibold">
+                          {showEmailOtpBox ? '📩 Code sent to email!' : '👉 Click "Send Email OTP" to receive code'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-3">
+
+                      <div className="flex flex-wrap items-center gap-3">
                         <input 
                           type="text"
                           maxLength="6"
-                          className="w-36 p-3 border border-slate-300 rounded-xl text-center font-bold tracking-widest text-lg outline-none focus:border-blue-600 bg-slate-50"
-                          placeholder="123456"
+                          className="w-44 p-3 border border-slate-300 rounded-xl text-center font-bold tracking-widest text-lg outline-none focus:border-blue-600 bg-slate-50"
+                          placeholder="••••••"
                           value={emailOtpInput}
                           onChange={e=>setEmailOtpInput(e.target.value.replace(/\D/g, ''))}
                         />
                         <button 
                           type="button"
-                          disabled={otpVerifying}
+                          disabled={otpVerifying || !emailOtpInput.trim()}
                           onClick={handleVerifyEmailOtp}
                           className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-sm transition"
                         >
                           {otpVerifying ? 'Verifying... ⏳' : '✓ Verify Code'}
                         </button>
-                        <button 
-                          type="button"
-                          disabled={otpSending}
-                          onClick={handleSendEmailOtp}
-                          className="text-xs font-semibold text-blue-600 hover:underline px-2"
-                        >
-                          Resend Code
-                        </button>
+                        {showEmailOtpBox && (
+                          <button 
+                            type="button"
+                            disabled={otpSending}
+                            onClick={handleSendEmailOtp}
+                            className="text-xs font-semibold text-blue-600 hover:underline px-2"
+                          >
+                            Resend Code
+                          </button>
+                        )}
                       </div>
-                      <div className="text-[11px] text-slate-400">
-                        * Code expires in 5 minutes. Please check your Gmail primary or spam folder.
-                      </div>
+
+                      <p className="text-[11px] text-slate-400">
+                        * Enter your email above, click <b>"Send Email OTP"</b>, enter the 6-digit code received in Gmail, and click <b>"Verify Code"</b>.
+                      </p>
+                    </div>
+                  )}
+
+                  {isEmailVerified && (
+                    <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 p-3.5 rounded-xl font-bold flex items-center gap-2 text-xs">
+                      <span>✅</span> Official Email Address Verified Successfully: <u>{formData.email}</u>
                     </div>
                   )}
                 </div>

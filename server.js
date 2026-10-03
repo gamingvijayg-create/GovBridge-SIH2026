@@ -91,7 +91,11 @@ const { adminUsers, problemStatements } = require('./data/seedData');
 
 async function autoSeedData() {
   try {
-    // 1. Seed Admin Accounts
+    // 1. Seed & Update Admin Accounts
+    // Migrate legacy admin emails if present
+    await User.updateOne({ email: 'vijayasarathi@govbridge.gov.in' }, { $set: { email: 'vijayasarathisarathi@gmail.com' } });
+    await User.updateOne({ email: 'santhanathanush@govbridge.gov.in' }, { $set: { email: 'santhanathanush2007@gmail.com' } });
+
     for (const admin of adminUsers) {
       const existingAdmin = await User.findOne({ email: admin.email });
       if (!existingAdmin) {
@@ -104,6 +108,12 @@ async function autoSeedData() {
           role: 'admin'
         });
         console.log(`👑 Auto-Seeded Admin: ${admin.name} (${admin.email})`);
+      } else {
+        // Ensure admin role is set
+        if (existingAdmin.role !== 'admin') {
+          existingAdmin.role = 'admin';
+          await existingAdmin.save();
+        }
       }
     }
 
