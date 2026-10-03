@@ -16,46 +16,37 @@ const loginLimiter = rateLimiter({
   message: 'Too many login attempts from this IP. Please try again after 15 minutes.'
 });
 
-// 2. OTP Request Limiter: max 5 requests per hour per phone
+// 2. OTP Request Limiter: max 5 requests per hour per email
 const otpRequestLimiter = rateLimiter({
   windowMs: 60 * 60 * 1000,
   max: 5,
   message: 'Maximum OTP request limit reached (5 requests per hour). Please try again later.',
   keyGenerator: (req) => {
-    const val = (req.body.phone || req.body.value || req.ip || '').toLowerCase().trim();
+    const val = (req.body.email || req.body.value || req.ip || '').toLowerCase().trim();
     return `otp_req_${val}`;
   }
 });
 
-// Helper: Normalize phone to 10 digits
-function getCleanPhone(phone) {
-  if (!phone || typeof phone !== 'string') return null;
-  const digits = phone.replace(/\D/g, '').slice(-10);
-  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
+// Helper: Validate email format
+function isValidEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-// POST /api/auth/send-otp - Generate 6-digit OTP for Registration & Phone/Email verification
+// =========================================================================
+// 1. SEND OTP (Registration / Verification Flow)
+// =========================================================================
 router.post('/send-otp', otpRequestLimiter, async (req, res) => {
   try {
-    const { target, value } = req.body;
-    if (!value) {
-      return res.status(400).json({ success: false, error: 'Phone number or Email ID is required' });
+    const { target, value, email } = req.body;
+    const rawEmail = (email || value || '').toLowerCase().trim();
+
+    if (!isValidEmail(rawEmail)) {
+      return res.status(400).json({ success: false, error: 'A valid email address is required.' });
     }
 
-    const rawValue = value.toLowerCase().trim();
-    const isEmail = target === 'email' || rawValue.includes('@');
-    let destinationKey = rawValue;
-
-    if (!isEmail) {
-      const cleanPhone = getCleanPhone(rawValue);
-      if (!cleanPhone) {
-        return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit Indian mobile number.' });
-      }
-      destinationKey = cleanPhone;
-    }
-
-    // Rate Rule: Invalidate older OTPs for this phone/target
-    await Otp.deleteMany({ phone: destinationKey, purpose: 'verification' });
+    // Invalidate older verification OTPs for this email
+    await Otp.deleteMany({ email: rawEmail, purpose: 'verification' });
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -64,7 +55,7 @@ router.post('/send-otp', otpRequestLimiter, async (req, res) => {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     await Otp.create({
-      phone: destinationKey,
+      email: rawEmail,
       otpHash,
       purpose: 'verification',
       expiresAt,
@@ -72,14 +63,22 @@ router.post('/send-otp', otpRequestLimiter, async (req, res) => {
       used: false
     });
 
-    // Send via active provider (console, email, msg91)
-    await sendOtp(destinationKey, otp, 'verification');
+    // Send OTP via configured provider (default: email)
+    try {
+      await sendOtp(rawEmail, otp, 'verification');
+    } catch (sendErr) {
+      console.error('[AUTH] Failed to send verification OTP email:', sendErr.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Unable to deliver verification code. Please check your email configuration or try again.'
+      });
+    }
 
-    // NEVER RETURN OTP IN API RESPONSE
+    // NEVER return OTP code in API response
     res.json({
       success: true,
-      message: `Verification code sent to your ${isEmail ? 'email' : 'phone'} (${value}). Valid for 5 minutes.`,
-      target: destinationKey
+      message: `Verification code sent to ${rawEmail}. Valid for 5 minutes.`,
+      email: rawEmail
     });
   } catch (err) {
     console.error('send-otp error:', err.message);
@@ -87,20 +86,20 @@ router.post('/send-otp', otpRequestLimiter, async (req, res) => {
   }
 });
 
-// POST /api/auth/verify-otp - Verify OTP code using DB Otp model
+// =========================================================================
+// 2. VERIFY OTP (Registration / General Verification Flow)
+// =========================================================================
 router.post('/verify-otp', async (req, res) => {
   try {
-    const { value, otp } = req.body;
-    if (!value || !otp) {
-      return res.status(400).json({ success: false, error: 'Value and OTP are required' });
+    const { email, value, otp } = req.body;
+    const rawEmail = (email || value || '').toLowerCase().trim();
+
+    if (!rawEmail || !otp) {
+      return res.status(400).json({ success: false, error: 'Email and OTP are required.' });
     }
 
-    const rawValue = value.toLowerCase().trim();
-    const isEmail = rawValue.includes('@');
-    const destinationKey = isEmail ? rawValue : (getCleanPhone(rawValue) || rawValue);
-
     const record = await Otp.findOne({
-      phone: destinationKey,
+      email: rawEmail,
       purpose: 'verification',
       used: false
     }).sort({ createdAt: -1 });
@@ -116,7 +115,7 @@ router.post('/verify-otp', async (req, res) => {
 
     if (record.attempts >= 3) {
       await Otp.deleteOne({ _id: record._id });
-      return res.status(400).json({ success: false, error: 'Too many wrong attempts. This OTP is now invalidated. Please request a new OTP.' });
+      return res.status(400).json({ success: false, error: 'Too many wrong attempts. This OTP has been invalidated. Please request a new OTP.' });
     }
 
     const isMatch = await bcrypt.compare(otp.trim(), record.otpHash);
@@ -137,7 +136,7 @@ router.post('/verify-otp', async (req, res) => {
     res.json({
       success: true,
       verified: true,
-      message: 'OTP verified successfully!'
+      message: 'Email verified successfully!'
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -145,27 +144,26 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 // =========================================================================
-// TASK 4: FORGOT PASSWORD FLOW (Phone -> Request OTP -> Verify OTP -> Reset)
+// 3. FORGOT PASSWORD FLOW (EMAIL-BASED)
 // =========================================================================
 
-// POST /api/auth/forgot-password-otp - Request OTP for phone
-// Rule 3: Returns GENERIC success message whether user exists or not (Prevents user enumeration)
-// Rule 4: 5 min validity, 30s resend cooldown, 5 reqs/hr rate limit, invalidate older OTPs
+// POST /api/auth/forgot-password-otp - Request OTP for registered email
+// Anti-enumeration: ALWAYS returns the same generic message whether email exists or not
 router.post('/forgot-password-otp', otpRequestLimiter, async (req, res) => {
   try {
-    const { phone } = req.body;
-    if (!phone) {
-      return res.status(400).json({ success: false, error: 'Registered phone number is required' });
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email address is required.' });
     }
 
-    const cleanPhone = getCleanPhone(phone);
-    if (!cleanPhone) {
-      return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit Indian mobile number.' });
+    const cleanEmail = email.toLowerCase().trim();
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
     }
 
     // 30-Second Resend Cooldown Check
     const latestOtp = await Otp.findOne({
-      phone: cleanPhone,
+      email: cleanEmail,
       purpose: 'reset'
     }).sort({ createdAt: -1 });
 
@@ -177,22 +175,22 @@ router.post('/forgot-password-otp', otpRequestLimiter, async (req, res) => {
       });
     }
 
-    // Check if phone exists in DB
-    const user = await User.findOne({ phone: cleanPhone });
+    // Check if user exists in DB
+    const user = await User.findOne({ email: cleanEmail });
 
-    // Always invalidate any previous reset OTPs for this phone
-    await Otp.deleteMany({ phone: cleanPhone, purpose: 'reset' });
+    // Invalidate any older reset OTPs for this email
+    await Otp.deleteMany({ email: cleanEmail, purpose: 'reset' });
 
-    // Generic Response Message
+    // Generic Response: Prevent User Enumeration
     const genericResponse = {
       success: true,
-      message: 'If this phone number is registered, a 6-digit verification code has been dispatched.',
-      phone: cleanPhone
+      message: 'If this email address is registered, a 6-digit verification code has been dispatched.',
+      email: cleanEmail
     };
 
-    // If user does NOT exist, do NOT send SMS, but return generic success (anti-enumeration)
+    // If user does not exist, return generic response without sending email
     if (!user) {
-      console.log(`[AUTH] Forgot password requested for non-existent phone: +91${cleanPhone}`);
+      console.log(`[AUTH] Forgot password requested for non-existent email: ${cleanEmail}`);
       return res.json(genericResponse);
     }
 
@@ -203,7 +201,7 @@ router.post('/forgot-password-otp', otpRequestLimiter, async (req, res) => {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     await Otp.create({
-      phone: cleanPhone,
+      email: cleanEmail,
       otpHash,
       purpose: 'reset',
       expiresAt,
@@ -211,32 +209,36 @@ router.post('/forgot-password-otp', otpRequestLimiter, async (req, res) => {
       used: false
     });
 
-    // Send OTP via configured provider
-    const providerTarget = (process.env.SMS_PROVIDER === 'email' && user.email) ? user.email : cleanPhone;
-    await sendOtp(providerTarget, otp, 'reset');
+    // Send OTP email cleanly without crashing on SMTP failures
+    try {
+      await sendOtp(cleanEmail, otp, 'reset');
+    } catch (sendErr) {
+      console.error('[AUTH] Failed to send password reset email (sanitized):', sendErr.message);
+      // Return generic failure to user without breaking or leaking secrets
+      return res.status(500).json({
+        success: false,
+        error: 'Unable to deliver verification code. Please try again later.'
+      });
+    }
 
     res.json(genericResponse);
   } catch (err) {
     console.error('Forgot password OTP error:', err);
-    res.status(500).json({ success: false, error: err.message || 'Server error processing request' });
+    res.status(500).json({ success: false, error: err.message || 'Server error processing request.' });
   }
 });
 
-// POST /api/auth/verify-reset-otp - Verify OTP and return short-lived Reset JWT (10 mins, purpose=reset)
+// POST /api/auth/verify-reset-otp - Verify reset OTP and return short-lived Reset JWT (10 mins, purpose=reset)
 router.post('/verify-reset-otp', async (req, res) => {
   try {
-    const { phone, otp } = req.body;
-    if (!phone || !otp) {
-      return res.status(400).json({ success: false, error: 'Phone number and OTP are required' });
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, error: 'Email address and OTP code are required.' });
     }
 
-    const cleanPhone = getCleanPhone(phone);
-    if (!cleanPhone) {
-      return res.status(400).json({ success: false, error: 'Invalid phone number format' });
-    }
-
+    const cleanEmail = email.toLowerCase().trim();
     const record = await Otp.findOne({
-      phone: cleanPhone,
+      email: cleanEmail,
       purpose: 'reset',
       used: false
     }).sort({ createdAt: -1 });
@@ -252,7 +254,7 @@ router.post('/verify-reset-otp', async (req, res) => {
 
     if (record.attempts >= 3) {
       await Otp.deleteOne({ _id: record._id });
-      return res.status(400).json({ success: false, error: 'Maximum 3 attempts exceeded. OTP has been invalidated.' });
+      return res.status(400).json({ success: false, error: 'Maximum 3 attempts exceeded. This OTP has been invalidated.' });
     }
 
     const isMatch = await bcrypt.compare(otp.trim(), record.otpHash);
@@ -270,18 +272,17 @@ router.post('/verify-reset-otp', async (req, res) => {
     record.used = true;
     await record.save();
 
-    // Verify user exists for token creation
-    const user = await User.findOne({ phone: cleanPhone });
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
-      return res.status(404).json({ success: false, error: 'Account not found' });
+      return res.status(404).json({ success: false, error: 'Account not found.' });
     }
 
-    // Issue short-lived Reset Token (10 minutes, purpose=reset)
+    // Short-lived Reset Token (10 minutes, purpose=reset)
     const secretKey = String(JWT_SECRET || 'govbridge_secret_2026');
     const resetToken = jwt.sign(
       {
         id: String(user._id),
-        phone: cleanPhone,
+        email: cleanEmail,
         purpose: 'reset'
       },
       secretKey,
@@ -303,7 +304,7 @@ router.post('/reset-password', async (req, res) => {
   try {
     const { resetToken, newPassword } = req.body;
     if (!resetToken || !newPassword) {
-      return res.status(400).json({ success: false, error: 'Reset token and new password are required' });
+      return res.status(400).json({ success: false, error: 'Reset token and new password are required.' });
     }
 
     if (typeof newPassword !== 'string' || newPassword.length < 8) {
@@ -332,7 +333,7 @@ router.post('/reset-password', async (req, res) => {
     user.password = hashedPassword;
     await user.save();
 
-    console.log(`🔒 [PASSWORD RESET COMPLETE] User: ${user.phone || user.email}`);
+    console.log(`🔒 [PASSWORD RESET COMPLETE] User: ${user.email}`);
 
     res.json({
       success: true,
@@ -344,7 +345,7 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // =========================================================================
-// REGISTRATION & LOGIN
+// 4. REGISTRATION & LOGIN (EMAIL-BASED)
 // =========================================================================
 
 // POST /api/auth/signup - Register Startup User
@@ -354,29 +355,24 @@ router.post('/signup', async (req, res) => {
 
     const startupTitle = (companyName || name || '').trim();
     if (!startupTitle || !email || !password) {
-      return res.status(400).json({ success: false, error: 'Please provide Company Name, Email ID, and Password.' });
+      return res.status(400).json({ success: false, error: 'Please provide Company Name, Email Address, and Password.' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    const cleanPhone = phone ? getCleanPhone(phone) : null;
-
-    if (phone && !cleanPhone) {
-      return res.status(400).json({ success: false, error: 'Invalid 10-digit Indian phone number.' });
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({ success: false, error: 'Please provide a valid email address.' });
     }
 
-    const existingUser = await User.findOne({
-      $or: [
-        { email: normalizedEmail },
-        ...(cleanPhone ? [{ phone: cleanPhone }] : [])
-      ]
-    });
+    if (typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long.' });
+    }
 
+    // Check unique email
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        error: existingUser.email === normalizedEmail
-          ? 'User account with this email already exists.'
-          : 'User account with this phone number already exists.'
+        error: 'An account with this email address already exists. Please log in instead.'
       });
     }
 
@@ -386,7 +382,7 @@ router.post('/signup', async (req, res) => {
     const newUser = await User.create({
       name: startupTitle,
       email: normalizedEmail,
-      phone: cleanPhone || undefined,
+      phone: phone ? String(phone).trim() : '',
       password: hashedPassword,
       role: 'startup',
       isSelected: false
@@ -398,7 +394,6 @@ router.post('/signup', async (req, res) => {
         id: String(newUser._id),
         role: String(newUser.role),
         email: String(newUser.email),
-        phone: newUser.phone,
         isSelected: newUser.isSelected
       },
       secretKey,
@@ -421,29 +416,30 @@ router.post('/signup', async (req, res) => {
 
   } catch (err) {
     console.error('Signup error:', err);
+    if (err.code === 11000) {
+      return res.status(400).json({ success: false, error: 'An account with this email address already exists.' });
+    }
     res.status(500).json({ success: false, error: err.message || 'Signup failed' });
   }
 });
 
 const { adminUsers } = require('../data/seedData');
 
-// POST /api/auth/login - Authenticate Startup or Admin User
+// POST /api/auth/login - Authenticate Startup or Admin User via Email / Company Name
 router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Please enter both identifier (email/phone/name) and password.' });
+      return res.status(400).json({ success: false, error: 'Please enter both your registered email address and password.' });
     }
 
     const cleanInput = email.toLowerCase().trim();
-    const phoneInput = getCleanPhone(email);
 
     let user = await User.findOne({
       $or: [
         { email: cleanInput },
-        { name: new RegExp(`^${cleanInput}$`, 'i') },
-        ...(phoneInput ? [{ phone: phoneInput }] : [])
+        { name: new RegExp(`^${cleanInput}$`, 'i') }
       ]
     });
 
@@ -463,12 +459,12 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
 
     if (!user) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials.' });
+      return res.status(401).json({ success: false, error: 'Invalid email or password credentials.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials.' });
+      return res.status(401).json({ success: false, error: 'Invalid email or password credentials.' });
     }
 
     const secretKey = String(JWT_SECRET || 'govbridge_secret_2026');
@@ -477,7 +473,6 @@ router.post('/login', loginLimiter, async (req, res) => {
         id: String(user._id),
         role: String(user.role),
         email: String(user.email),
-        phone: user.phone,
         isSelected: user.isSelected
       },
       secretKey,
@@ -491,7 +486,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         id: String(user._id),
         name: user.name,
         email: user.email,
-        phone: user.phone,
+        phone: user.phone || '',
         role: user.role,
         isSelected: user.isSelected
       }
@@ -511,7 +506,7 @@ router.get('/me', verifyToken, async (req, res) => {
       id: req.user._id,
       name: req.user.name,
       email: req.user.email,
-      phone: req.user.phone,
+      phone: req.user.phone || '',
       role: req.user.role,
       isSelected: req.user.isSelected,
       createdAt: req.user.createdAt

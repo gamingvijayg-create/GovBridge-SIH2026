@@ -64,7 +64,7 @@
       const [authChecking, setAuthChecking] = useState(true);
 
       // Login form state
-      const [phone, setPhone] = useState('');
+      const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
       const [loginError, setLoginError] = useState('');
       const [loginLoading, setLoginLoading] = useState(false);
@@ -161,7 +161,7 @@
           const res = await fetch('/api/selected/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, password })
+            body: JSON.stringify({ email, password })
           });
           const data = await res.json();
           if (data.success) {
@@ -373,19 +373,15 @@
 
                 <form onSubmit={handleLogin} className="space-y-5 text-xs font-bold text-slate-700">
                   <div>
-                    <label>Registered Mobile Phone Number (10 Digits)</label>
-                    <div className="mt-1 flex rounded-xl border border-slate-200 overflow-hidden focus-within:border-emerald-600">
-                      <span className="inline-flex items-center px-3 bg-slate-100 text-slate-500 text-xs font-bold">+91</span>
-                      <input
-                        type="tel"
-                        required
-                        maxLength="10"
-                        placeholder="9876543210"
-                        className="w-full p-3 outline-none"
-                        value={phone}
-                        onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
-                      />
-                    </div>
+                    <label>Registered Official Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="founder@yourstartup.com"
+                      className="w-full mt-1 p-3 border border-slate-200 rounded-xl outline-none focus:border-emerald-600 bg-white"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                    />
                   </div>
 
                   <div>
